@@ -1,20 +1,12 @@
 {
   "name": "airport-semey",
-  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "next": "^15.5.18",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "dev": "concurrently --kill-others-on-fail -n backend,frontend -c blue,green \"pnpm --dir backend start:dev\" \"npm --dir frontend run dev\"",
+    "dev:backend": "pnpm --dir backend start:dev",
+    "dev:frontend": "npm --dir frontend run dev"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.19",
-    "postcss": "^8.4.47"
+    "concurrently": "^9.1.2"
   }
 }
