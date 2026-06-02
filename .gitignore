@@ -1,33 +1,37 @@
 # dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# env
+# production build
+.next/
+out/
+build/
+
+# env files
 .env
 .env.local
-.env.*.local
-
-# frontend (Next.js)
-frontend/.next/
-frontend/out/
-frontend/build/
-frontend/next-env.d.ts
-
-# backend (NestJS)
-backend/dist/
-backend/coverage/
-backend/uploads/*
-!backend/uploads/.gitkeep
-backend/tmp/
+.env.development.local
+.env.test.local
+.env.production.local
 
 # debug
-*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .pnpm-debug.log*
 
-# OS / editor
+# OS
 .DS_Store
 Thumbs.db
+
+# editor
 .vscode/
 .idea/
 
-# temp scripts
-frontend/temp_abay_*
+# next
+*.tsbuildinfo
+next-env.d.ts
+
+# temp
+temp_abay_*
