@@ -1,12 +1,19 @@
-# Аэропорт Семей — сайт
+# Аэропорт Семей
 
-Next.js фронтенд.
+```
+airport/
+├── frontend/   # Next.js — сайт
+└── backend/    # NestJS — API (локально, не в git)
+```
+
+## Фронтенд
 
 ```bash
+cd frontend
 npm install
 npm run dev
 ```
 
 Сайт: http://localhost:3000
 
-API задаётся через `NEXT_PUBLIC_API_URL` в `.env.local` (см. `.env.local.example`).
+На Vercel укажи **Root Directory: `frontend`**.
