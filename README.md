@@ -10,7 +10,7 @@ airport/
 
 1. Репозиторий: https://github.com/Anubizze/airportsemey
 2. [vercel.com/new](https://vercel.com/new) → Import Git Repository → выбери **airportsemey**
-3. **Root Directory:** `frontend` (обязательно)
+3. **Root Directory:** `frontend` (**обязательно** — без этого сборка падает: «Couldn't find app directory»)
 4. Framework: **Next.js** (определится автоматически)
 5. **Environment Variables:**
    - `NEXT_PUBLIC_API_BASE_URL` = `https://твой-api.kz/api` (когда backend будет на сервере)
