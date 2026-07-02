@@ -11,6 +11,7 @@ import {
 } from '@/lib/vacanciesApi';
 
 const DEFAULT_PHONE = '87222360033';
+const HR_EMAIL = 'airportsemey@mail.ru';
 
 function ApplyModal({ vacancy, onClose }) {
   const { t } = useLanguage();
@@ -234,8 +235,8 @@ export default function VacanciesPage() {
           <div className="mt-8 bg-blue-50 rounded-2xl border border-blue-100 p-6">
             <p className="text-sm text-gray-700">
               {p.contactUs}{' '}
-              <a href="mailto:airportsemey@mail.kz" className="font-medium text-blue-700 hover:underline">
-                airportsemey@mail.kz
+              <a href={`mailto:${HR_EMAIL}`} className="font-medium text-blue-700 hover:underline">
+                {HR_EMAIL}
               </a>
               {' '}{p.orCall}{' '}
               <a href={phoneHref(DEFAULT_PHONE)} className="font-medium text-blue-700 hover:underline">

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import logo from '@/public/airport_logo.png';
+import logoBird from '@/public/Logoairportabai.jpeg';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function Header() {
@@ -55,7 +55,7 @@ export default function Header() {
         { label: t.nav.procurement, href: '/partners/procurement' },
         { label: t.nav.tenants, href: '/partners/tenants' },
         { label: t.nav.tariffs, href: '/partners/tariffs' },
-        { label: t.nav.fuel, href: '/partners/fuel' },
+        { label: t.nav.fuel, href: '/partners/fuel-storage' },
         { label: t.nav.documents, href: '/partners/documents' },
       ],
     },
@@ -111,13 +111,22 @@ export default function Header() {
         <div className="container mx-auto px-4 lg:px-8 flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center flex-shrink-0">
-            <Image
-              src={logo}
-              alt={t.a11y.logoAlt}
-              height={36}
-              priority
-              className="w-auto brightness-0 invert"
-            />
+            <div className="flex items-center gap-2.5">
+              <Image
+                src={logoBird}
+                alt={t.a11y.logoAlt}
+                width={42}
+                height={42}
+                priority
+                className="w-10 h-10 rounded-full object-cover"
+              />
+              <div className="leading-none">
+                <div className="text-white font-bold tracking-wide text-2xl">ABAI</div>
+                <div className="text-white/90 text-[8px] uppercase tracking-[0.12em] mt-0.5">
+                  International Airport
+                </div>
+              </div>
+            </div>
           </Link>
 
           {/* Desktop nav */}

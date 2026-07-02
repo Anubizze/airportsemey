@@ -3,6 +3,7 @@ import { LanguageProvider } from '@/context/LanguageContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import LangSync from '@/components/layout/LangSync';
+import EotinishButton from '@/components/layout/EotinishButton';
 
 export const metadata = {
   title: {
@@ -21,6 +22,7 @@ export default function RootLayout({ children }) {
           <LangSync />
           <Header />
           <main className="flex-1">{children}</main>
+          <EotinishButton />
           <Footer />
         </LanguageProvider>
       </body>

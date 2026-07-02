@@ -1,9 +1,5 @@
-'use client';
-
-import PartnerContentPage from '@/components/partners/PartnerContentPage';
-import { useLanguage } from '@/context/LanguageContext';
+import { redirect } from 'next/navigation';
 
 export default function FuelPage() {
-  const { t } = useLanguage();
-  return <PartnerContentPage pageKey="fuel" parentCrumb={t.nav.fuel} />;
+  redirect('/partners/fuel-storage');
 }

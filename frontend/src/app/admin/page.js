@@ -23,6 +23,7 @@ import {
   groupDocumentsByYear,
   uploadPartnerDocument,
 } from '@/lib/documentsApi';
+import FuelStorageAdminSection from '@/components/admin/FuelStorageAdminSection';
 import { AIRPORT_SERVICES } from '@/data/services';
 
 const API_BASE =
@@ -1506,7 +1507,7 @@ export default function AdminPage() {
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Документы для партнёров ({partnerDocuments.length})
+            Отчетность для партнёров ({partnerDocuments.length})
           </h2>
           <p className="text-sm text-gray-500 mb-4">
             Годовые отчёты и другие PDF-документы. На сайте отображаются по годам (новые сверху).
@@ -1581,7 +1582,7 @@ export default function AdminPage() {
           </form>
 
           {documentGroups.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">Документы пока не добавлены</p>
+            <p className="text-sm text-gray-400 py-4 text-center">Отчетность пока не добавлена</p>
           ) : (
             <div className="space-y-6">
               {documentGroups.map(({ year, documents }) => (
@@ -1637,6 +1638,12 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+
+        <FuelStorageAdminSection
+          token={token}
+          onMessage={setMessage}
+          onAuthError={handleAuthError}
+        />
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
