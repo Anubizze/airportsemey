@@ -6,6 +6,7 @@ import LangSync from '@/components/layout/LangSync';
 import EotinishButton from '@/components/layout/EotinishButton';
 
 export const metadata = {
+  metadataBase: new URL('https://abaiairport.kz'),
   title: {
     default: 'Аэропорт Семей — Международный аэропорт',
     template: '%s | Аэропорт Семей',

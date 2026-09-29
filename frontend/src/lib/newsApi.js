@@ -52,6 +52,41 @@ export async function fetchAviationNews(limit = 12) {
   return mapApiNews(data, 'aviation');
 }
 
+export async function fetchNewsBySlug(slug) {
+  try {
+    const response = await fetch(`${API_BASE}/news/article/${encodeURIComponent(slug)}`, {
+      cache: 'no-store',
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data?.article) {
+        return {
+          article: mapApiNews([data.article], data.article.source ?? 'akorda')[0],
+          related: mapApiNews(data.related ?? [], data.article.source ?? 'akorda'),
+        };
+      }
+    }
+  } catch {
+    // fall through to list search
+  }
+
+  const [akorda, abay, transport, aviation] = await Promise.all([
+    fetchAkordaNews(50).catch(() => []),
+    fetchAbayNews(50).catch(() => []),
+    fetchTransportNews(50).catch(() => []),
+    fetchAviationNews(50).catch(() => []),
+  ]);
+  const merged = [...akorda, ...abay, ...transport, ...aviation];
+  const article = merged.find((item) => item.slug === slug);
+  if (!article) return null;
+
+  const related = merged
+    .filter((item) => item.slug !== slug && item.source === article.source)
+    .slice(0, 3);
+
+  return { article, related };
+}
+
 function mapApiNews(items, fallbackSource) {
   return items.map((item, idx) => ({
     id: item.id ?? `${fallbackSource}-${idx}`,

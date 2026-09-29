@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -9,56 +9,74 @@ import {
   getNewsSourceLabel,
 } from '@/lib/newsLabels';
 import { useLanguage } from '@/context/LanguageContext';
-import { fetchAbayNews, fetchAviationNews, fetchAkordaNews, fetchTransportNews, getFallbackNews } from '@/lib/newsApi';
+import { fetchNewsBySlug } from '@/lib/newsApi';
 import kzGerb from '@/public/KZgerb.png';
+
+function NewsArticleLoading({ label }) {
+  return (
+    <>
+      <div style={{ backgroundColor: '#001e5c' }} className="text-white py-12">
+        <div className="container mx-auto px-4 lg:px-8 max-w-4xl">
+          <div className="h-4 w-48 rounded bg-blue-700/40 animate-pulse mb-4" />
+          <div className="h-8 w-2/3 max-w-xl rounded bg-blue-700/30 animate-pulse" />
+        </div>
+      </div>
+      <div className="min-h-[50vh] flex items-center justify-center px-4 py-16 bg-gray-50">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700" />
+          <p className="text-base font-medium text-gray-700">{label}</p>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function NewsArticlePage({ params }) {
   const resolvedParams = use(params);
   const slug = resolvedParams?.slug;
   const { lang, t } = useLanguage();
-  const [news, setNews] = useState(getFallbackNews());
+  const [article, setArticle] = useState(null);
+  const [related, setRelated] = useState([]);
 
   useEffect(() => {
+    if (!slug) return;
+
     let cancelled = false;
+
     const load = async () => {
-      try {
-        const [akorda, abay, transport, aviation] = await Promise.all([
-          fetchAkordaNews(40).catch(() => []),
-          fetchAbayNews(40).catch(() => []),
-          fetchTransportNews(40).catch(() => []),
-          fetchAviationNews(40).catch(() => []),
-        ]);
-        const merged = [...akorda, ...abay, ...transport, ...aviation];
-        if (!cancelled && merged.length) setNews(merged);
-      } catch {
-        // keep fallback
+      setArticle(null);
+      setRelated([]);
+
+      for (let attempt = 0; attempt < 10 && !cancelled; attempt += 1) {
+        try {
+          const result = await fetchNewsBySlug(slug);
+          if (cancelled) return;
+          if (result?.article) {
+            setArticle(result.article);
+            setRelated(result.related ?? []);
+            return;
+          }
+        } catch {
+          // retry
+        }
+
+        if (attempt < 9 && !cancelled) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        }
       }
     };
+
     void load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [slug]);
 
-  const article = useMemo(
-    () => news.find((a) => a.slug === slug),
-    [news, slug],
-  );
   if (!article) {
-    return (
-      <div className="min-h-[50vh] flex items-center justify-center px-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.news.notFound}</h1>
-          <Link href="/news" className="text-blue-700 hover:text-blue-900 font-medium">
-            {t.news.backToNews}
-          </Link>
-        </div>
-      </div>
-    );
+    return <NewsArticleLoading label={t.news.loading} />;
   }
 
   const category = getNewsCategory(t, article.category);
-  const related = news.filter((a) => a.id !== article.id).slice(0, 3);
   const sourceSiteLabel = getNewsSourceLabel(t, article.source);
   const articleDateText = formatNewsDate(article, lang);
   const articleImageSrc = article.image ?? kzGerb;
@@ -84,7 +102,6 @@ export default function NewsArticlePage({ params }) {
       <div className="py-10 bg-gray-50">
         <div className="container mx-auto px-4 lg:px-8 max-w-4xl">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Article */}
             <div className="lg:col-span-2">
               <article className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                 <div className="relative h-[360px] sm:h-[460px] bg-slate-100">
@@ -140,7 +157,6 @@ export default function NewsArticlePage({ params }) {
               </article>
             </div>
 
-            {/* Sidebar */}
             <div>
               <h3 className="font-bold text-gray-900 mb-4">{t.news.otherNews}</h3>
               <div className="space-y-3">
