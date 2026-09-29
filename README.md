@@ -1,9 +1,10 @@
 # Аэропорт Семей
 
+Фронтенд сайта `https://abaiairport.kz`. В репозитории хранится только фронтенд; API подключается отдельно.
+
 ```
 airport/
-├── frontend/   # Next.js — сайт (деплой на Vercel)
-└── backend/    # NestJS — API (локально)
+└── frontend/   # Next.js — сайт (деплой на Vercel)
 ```
 
 ## Деплой фронтенда на Vercel (через GitHub)
@@ -29,13 +30,3 @@ npm run dev
 Сайт: http://localhost:3000
 
 Скопируй `frontend/.env.local.example` → `frontend/.env.local` и укажи URL API.
-
-## Бэкенд (локально)
-
-```bash
-cd backend
-pnpm install
-pnpm dev
-```
-
-API: http://localhost:4000/api

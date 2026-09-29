@@ -1,19 +1,15 @@
+# Keep only the frontend and its repository documentation at the root.
+/*
+!/frontend/
+!/.gitignore
+!/README.md
+
 # frontend
 frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/build/
 frontend/next-env.d.ts
-
-# backend
-backend/node_modules/
-backend/dist/
-backend/.env
-backend/.env.local
-backend/coverage/
-backend/uploads/*
-!backend/uploads/.gitkeep
-backend/tmp/
 
 # env
 .env
