@@ -1,35 +1,26 @@
+'use client';
+
 import Image from 'next/image';
-import flyarystanLogo from '@/public/flyarystan.png';
-import scatLogo from '@/public/scat.png';
-import hiSkyLogo from '@/public/hisky.png';
 
-const AIRLINE_LOGOS = {
-  FS: flyarystanLogo,
-  DV: scatLogo,
-  IH: hiSkyLogo,
-  KC: flyarystanLogo,
-};
+import { useAirlines } from '@/context/AirlinesContext';
 
-const AIRLINE_INITIALS = {
-  KC: { bg: '#003087', text: '#ffffff', label: 'Air\nAstana' },
-  IQ: { bg: '#005baa', text: '#ffffff', label: 'QAZAQ\nAir' },
-};
+function LogoImage({ src, alt }) {
+  if (!src) return null;
+  if (typeof src === 'string') {
+    return <img src={src} alt={alt} className="object-contain w-full h-full" />;
+  }
+  return (
+    <Image src={src} alt={alt} width={132} height={60} className="object-contain w-full h-full" />
+  );
+}
 
-export default function AirlineLogo({ code, name, size = 'md' }) {
-  const normalizedCode = String(code ?? '')
-    .trim()
-    .toUpperCase();
-  const fallbackFromName = String(name ?? '')
-    .trim()
-    .split(/\s+/)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-  const effectiveCode = normalizedCode || fallbackFromName || 'UN';
-  const img = AIRLINE_LOGOS[effectiveCode];
+export default function AirlineLogo({ code, name }) {
+  const { findAirline } = useAirlines();
+  const airline = findAirline(code);
+  const src = airline?.logoUrl || airline?.logo || null;
+  const title = airline?.name || name || code;
 
-  if (img) {
+  if (src) {
     return (
       <div
         className="rounded-2xl flex items-center justify-center flex-shrink-0 bg-white shadow-sm"
@@ -39,24 +30,18 @@ export default function AirlineLogo({ code, name, size = 'md' }) {
           border: '1.5px solid #e8edf5',
           padding: '10px 14px',
         }}
-        title={name}
+        title={title}
       >
-        <Image
-          src={img}
-          alt={name}
-          width={132}
-          height={60}
-          className="object-contain w-full h-full"
-        />
+        <LogoImage src={src} alt={title} />
       </div>
     );
   }
 
-  const initials = AIRLINE_INITIALS[effectiveCode] ?? {
-    bg: '#64748b',
-    text: '#fff',
-    label: effectiveCode.slice(0, 2),
-  };
+  const label = String(title || code || '—')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .join('\n');
 
   return (
     <div
@@ -64,8 +49,8 @@ export default function AirlineLogo({ code, name, size = 'md' }) {
       style={{
         width: 160,
         height: 80,
-        backgroundColor: initials.bg,
-        color: initials.text,
+        backgroundColor: '#e10600',
+        color: '#ffffff',
         fontSize: 13,
         fontWeight: 700,
         textAlign: 'center',
@@ -73,9 +58,9 @@ export default function AirlineLogo({ code, name, size = 'md' }) {
         whiteSpace: 'pre-line',
         letterSpacing: '0.01em',
       }}
-      title={name}
+      title={title}
     >
-      {initials.label}
+      {label}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import './globals.css';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { AirlinesProvider } from '@/context/AirlinesContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import LangSync from '@/components/layout/LangSync';
@@ -20,11 +21,13 @@ export default function RootLayout({ children }) {
     <html lang="ru" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col bg-gray-50">
         <LanguageProvider>
-          <LangSync />
-          <Header />
-          <main className="flex-1">{children}</main>
-          <EotinishButton />
-          <Footer />
+          <AirlinesProvider>
+            <LangSync />
+            <Header />
+            <main className="flex-1">{children}</main>
+            <EotinishButton />
+            <Footer />
+          </AirlinesProvider>
         </LanguageProvider>
       </body>
     </html>

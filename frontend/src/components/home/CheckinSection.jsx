@@ -2,40 +2,31 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import flyarystanLogo from '@/public/flyarystan.png';
-import scatLogo from '@/public/scat.png';
-import hiSkyLogo from '@/public/hisky.png';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAirlines } from '@/context/AirlinesContext';
+import { airlineText } from '@/lib/airlineCatalog';
 
-const AIRLINES = [
-  {
-    key: 'flyarystan',
-    name: 'FlyArystan',
-    logo: flyarystanLogo,
-    url: 'https://www.flyarystan.com',
-    bg: '#fff7f2',
-    border: '#ffd4b8',
-  },
-  {
-    key: 'scat',
-    name: 'SCAT Airlines',
-    logo: scatLogo,
-    url: 'https://www.scat.kz',
-    bg: '#f2f6ff',
-    border: '#c8d8f8',
-  },
-  {
-    key: 'hisky',
-    name: 'Hi Sky',
-    logo: hiSkyLogo,
-    url: 'https://hisky.kz/',
-    bg: '#e8f2fa',
-    border: '#a8cce8',
-  },
-];
+function CheckinLogo({ airline }) {
+  const src = airline.logoUrl || airline.logo;
+  if (!src) return <span className="font-bold text-gray-500">{airline.code}</span>;
+  if (typeof src === 'string') {
+    return <img src={src} alt={airline.name} className="object-contain" style={{ width: 148, height: 72 }} />;
+  }
+  return (
+    <Image
+      src={src}
+      alt={airline.name}
+      width={148}
+      height={72}
+      className="object-contain"
+      style={{ width: 148, height: 72 }}
+    />
+  );
+}
 
 export default function CheckinSection() {
   const { t } = useLanguage();
+  const { airlines } = useAirlines();
 
   return (
     <section className="py-14 bg-white">
@@ -58,34 +49,21 @@ export default function CheckinSection() {
         </div>
 
         {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {AIRLINES.map((airline) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {airlines.map((airline) => (
             <div
-              key={airline.key}
-              className="rounded-2xl border overflow-hidden shadow-sm flex flex-col sm:flex-row"
-              style={{ borderColor: airline.border, backgroundColor: '#fff' }}
+              key={airline.code}
+              className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col sm:flex-row bg-white"
             >
-              {/* Logo */}
-              <div
-                className="flex items-center justify-center p-6 sm:w-48 flex-shrink-0"
-                style={{ backgroundColor: airline.bg }}
-              >
-                <Image
-                  src={airline.logo}
-                  alt={airline.name}
-                  width={148}
-                  height={72}
-                  className="object-contain"
-                  style={{ width: 148, height: 72 }}
-                />
+              <div className="flex items-center justify-center p-6 sm:w-48 flex-shrink-0 bg-gray-50">
+                <CheckinLogo airline={airline} />
               </div>
 
-              {/* Info */}
               <div className="flex flex-col justify-between p-5 flex-1">
                 <div>
                   <div className="font-bold text-gray-900 text-base mb-1">{airline.name}</div>
                   <p className="text-sm text-gray-500 leading-relaxed">
-                    {t.checkin[`${airline.key}Desc`]}
+                    {airlineText(airline, t, 'checkin') || t.checkin.siteDesc}
                   </p>
                 </div>
                 <div className="flex items-center justify-between mt-4">
@@ -95,18 +73,20 @@ export default function CheckinSection() {
                     </svg>
                     {t.checkin.beforeFlight}
                   </span>
-                  <a
-                    href={airline.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-xl hover:opacity-90 transition-opacity shadow-sm"
-                    style={{ backgroundColor: '#001e5c' }}
-                  >
-                    {t.checkin.register}
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
+                  {airline.websiteUrl ? (
+                    <a
+                      href={airline.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+                      style={{ backgroundColor: '#001e5c' }}
+                    >
+                      {t.checkin.register}
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  ) : null}
                 </div>
               </div>
             </div>

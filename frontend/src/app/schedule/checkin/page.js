@@ -1,43 +1,31 @@
 'use client';
 
 import Image from 'next/image';
-import flyarystanLogo from '@/public/flyarystan.png';
-import scatLogo from '@/public/scat.png';
-import hiSkyLogo from '@/public/hisky.png';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAirlines } from '@/context/AirlinesContext';
+import { airlineText } from '@/lib/airlineCatalog';
 
-const AIRLINES_CHECKIN = [
-  {
-    key: 'flyarystan',
-    name: 'FlyArystan',
-    code: 'FS',
-    url: 'https://www.flyarystan.com',
-    logo: flyarystanLogo,
-    bg: '#fff7f2',
-    border: '#ffd4b8',
-  },
-  {
-    key: 'scat',
-    name: 'SCAT Airlines',
-    code: 'DV',
-    url: 'https://www.scat.kz',
-    logo: scatLogo,
-    bg: '#f2f6ff',
-    border: '#c8d8f8',
-  },
-  {
-    key: 'hisky',
-    name: 'Hi Sky',
-    code: 'IH',
-    url: 'https://hisky.kz/',
-    logo: hiSkyLogo,
-    bg: '#e8f2fa',
-    border: '#a8cce8',
-  },
-];
+function PageLogo({ airline }) {
+  const src = airline.logoUrl || airline.logo;
+  if (!src) return <span className="font-bold text-gray-500">{airline.code}</span>;
+  if (typeof src === 'string') {
+    return <img src={src} alt={airline.name} className="object-contain" style={{ width: 160, height: 80 }} />;
+  }
+  return (
+    <Image
+      src={src}
+      alt={airline.name}
+      width={160}
+      height={80}
+      className="object-contain"
+      style={{ width: 160, height: 80 }}
+    />
+  );
+}
 
 export default function CheckinPage() {
   const { t } = useLanguage();
+  const { airlines } = useAirlines();
   const p = t.pages.checkin;
 
   const TIPS = [
@@ -86,31 +74,20 @@ export default function CheckinPage() {
           {/* Airlines */}
           <h2 className="text-xl font-bold text-gray-900 mb-5">{p.onlineCheckin}</h2>
           <div className="space-y-4">
-            {AIRLINES_CHECKIN.map((airline) => (
+            {airlines.map((airline) => (
               <div
                 key={airline.code}
-                className="bg-white rounded-2xl border shadow-sm overflow-hidden"
-                style={{ borderColor: airline.border }}
+                className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
               >
                 <div className="flex flex-col sm:flex-row items-stretch">
-                  <div
-                    className="flex items-center justify-center p-6 sm:w-52 flex-shrink-0"
-                    style={{ backgroundColor: airline.bg }}
-                  >
-                    <Image
-                      src={airline.logo}
-                      alt={airline.name}
-                      width={160}
-                      height={80}
-                      className="object-contain"
-                      style={{ width: 160, height: 80 }}
-                    />
+                  <div className="flex items-center justify-center p-6 sm:w-52 flex-shrink-0 bg-gray-50">
+                    <PageLogo airline={airline} />
                   </div>
                   <div className="flex flex-1 items-center justify-between gap-4 p-5">
                     <div>
                       <div className="font-bold text-gray-900 text-lg mb-1">{airline.name}</div>
                       <div className="text-sm text-gray-500 leading-relaxed">
-                        {t.checkin[`${airline.key}Desc`]}
+                        {airlineText(airline, t, 'checkin') || t.checkin.siteDesc}
                       </div>
                       <div className="flex items-center gap-1.5 mt-3 text-xs text-gray-400">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,8 +96,9 @@ export default function CheckinPage() {
                         {t.checkin.beforeFlight}
                       </div>
                     </div>
+                    {airline.websiteUrl ? (
                     <a
-                      href={airline.url}
+                      href={airline.websiteUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-sm font-semibold text-white px-5 py-3 rounded-xl transition-opacity hover:opacity-90 flex-shrink-0 shadow-sm"
@@ -131,6 +109,7 @@ export default function CheckinPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                     </a>
+                    ) : null}
                   </div>
                 </div>
               </div>

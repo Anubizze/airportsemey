@@ -2,9 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
-import flyarystanLogo from '@/public/flyarystan.png';
-import scatLogo from '@/public/scat.png';
-import hiSkyLogo from '@/public/hisky.png';
+import { useAirlines } from '@/context/AirlinesContext';
 import {
   deleteVacancy,
   fetchAdminVacancies,
@@ -81,41 +79,45 @@ const STATUS_LABELS_RU = {
 };
 const LOG_PAGE_SIZE = 20;
 
-const AIRLINE_PRESETS = [
-  {
-    code: 'FS',
-    name: 'FlyArystan',
-    logo: flyarystanLogo,
-    bg: '#fff7f2',
-    border: '#ffd4b8',
-  },
-  {
-    code: 'DV',
-    name: 'SCAT',
-    logo: scatLogo,
-    bg: '#f2f6ff',
-    border: '#c8d8f8',
-  },
-  {
-    code: 'IH',
-    name: 'Hi Sky',
-    logo: hiSkyLogo,
-    bg: '#e8f2fa',
-    border: '#a8cce8',
-    defaultCity: 'Урджар',
-    defaultCityCode: 'UZR',
-    flightNumberPrefix: 'IH',
-  },
+const AIRPORT_TZ = 'Asia/Almaty';
+
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: 'Пн' },
+  { value: 2, label: 'Вт' },
+  { value: 3, label: 'Ср' },
+  { value: 4, label: 'Чт' },
+  { value: 5, label: 'Пт' },
+  { value: 6, label: 'Сб' },
+  { value: 0, label: 'Вс' },
 ];
+
+function formatAirportDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('ru-RU', { timeZone: AIRPORT_TZ });
+}
 
 function toLocalDateInput(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-    date.getHours(),
-  )}:${pad(date.getMinutes())}`;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: AIRPORT_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const get = (type) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}
+
+function airportInputToIso(value) {
+  if (!value) return '';
+  return new Date(`${value}:00+05:00`).toISOString();
 }
 
 function getDelayMinutes(flight) {
@@ -161,6 +163,17 @@ export default function AdminPage() {
   const [docPublished, setDocPublished] = useState(true);
   const [docFile, setDocFile] = useState(null);
   const [docUploadLoading, setDocUploadLoading] = useState(false);
+  const [scheduleEntries, setScheduleEntries] = useState([]);
+  const [schedulePhotoUrl, setSchedulePhotoUrl] = useState('');
+  const [schedulePhotoFile, setSchedulePhotoFile] = useState(null);
+  const [scheduleSource, setScheduleSource] = useState('default');
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [carrierName, setCarrierName] = useState('');
+  const [carrierCode, setCarrierCode] = useState('');
+  const [carrierSite, setCarrierSite] = useState('');
+  const [carrierLogo, setCarrierLogo] = useState(null);
+  const [carrierSaving, setCarrierSaving] = useState(false);
+  const { airlines, reloadAirlines } = useAirlines();
 
   const isLogged = Boolean(token);
 
@@ -234,8 +247,8 @@ export default function AdminPage() {
   }, [filteredStatusHistory, logPage]);
 
   const selectedAirlinePreset = useMemo(
-    () => AIRLINE_PRESETS.find((item) => item.code === form.airlineCode),
-    [form.airlineCode],
+    () => airlines.find((item) => item.code === form.airlineCode),
+    [airlines, form.airlineCode],
   );
   const delayedFlights = useMemo(() => {
     return sortedFlights
@@ -264,6 +277,141 @@ export default function AdminPage() {
     const response = await fetch(`${API_BASE}/flights`, { cache: 'no-store' });
     const data = await response.json();
     setFlights(Array.isArray(data) ? data : []);
+  };
+
+  const loadSchedule = async (authToken) => {
+    const response = await fetch(`${API_BASE}/schedule`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+      cache: 'no-store',
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      handleSessionExpired();
+      return;
+    }
+    if (!response.ok) return;
+    const entries = Array.isArray(data.entries) ? data.entries : [];
+    setScheduleEntries(
+      entries.map((entry, index) => ({
+        localKey: `${entry.weekday}-${entry.flightNumber}-${entry.direction}-${index}`,
+        weekday: Number(entry.weekday),
+        flightNumber: entry.flightNumber ?? '',
+        direction: entry.direction === 'arrival' ? 'arrival' : 'departure',
+        city: entry.city ?? '',
+        time: entry.time ?? '',
+      })),
+    );
+    setSchedulePhotoUrl(data.photoUrl || '');
+    setScheduleSource(data.source === 'custom' ? 'custom' : 'default');
+  };
+
+  const updateScheduleEntry = (localKey, patch) => {
+    setScheduleEntries((rows) =>
+      rows.map((row) => (row.localKey === localKey ? { ...row, ...patch } : row)),
+    );
+  };
+
+  const handleSaveSchedule = async () => {
+    setScheduleLoading(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/schedule`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          entries: scheduleEntries.map((entry) => ({
+            weekday: Number(entry.weekday),
+            flightNumber: entry.flightNumber,
+            direction: entry.direction,
+            city: entry.city,
+            time: entry.time,
+          })),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        handleSessionExpired();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(
+          Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Не удалось сохранить расписание',
+        );
+      }
+      setMessage(
+        `Расписание сохранено. На сегодня применено рейсов: ${data.applied ?? 0}. AviationStack обновит статусы по этим рейсам.`,
+      );
+      setScheduleSource('custom');
+      await loadFlights();
+      await loadSchedule(token);
+    } catch (error) {
+      setMessage(error.message || 'Не удалось сохранить расписание');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const handleSchedulePhotoUpload = async (event) => {
+    event.preventDefault();
+    if (!schedulePhotoFile) return;
+    setScheduleLoading(true);
+    setMessage('');
+    try {
+      const body = new FormData();
+      body.append('file', schedulePhotoFile);
+      const response = await fetch(`${API_BASE}/schedule/photo`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        handleSessionExpired();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(data?.message || 'Не удалось загрузить фото');
+      }
+      setSchedulePhotoUrl(data.photoUrl || '');
+      setSchedulePhotoFile(null);
+      setMessage('Фото расписания загружено. Сверьте рейсы в таблице и сохраните.');
+    } catch (error) {
+      setMessage(error.message || 'Не удалось загрузить фото');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const handleSyncAviation = async () => {
+    setScheduleLoading(true);
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/schedule/sync`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        handleSessionExpired();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(data?.message || 'Синхронизация не удалась');
+      }
+      setMessage(
+        data.skipped
+          ? 'Синхронизация уже идёт. Обновите список через минуту.'
+          : 'AviationStack обновил статусы. Плановое время из админки не перезаписано.',
+      );
+      await loadFlights();
+    } catch (error) {
+      setMessage(error.message || 'Синхронизация не удалась');
+    } finally {
+      setScheduleLoading(false);
+    }
   };
 
   const loadStatusHistory = async (authToken) => {
@@ -326,6 +474,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isLogged) return;
     void loadFlights();
+    void loadSchedule(token);
     void loadStatusHistory(token);
     void loadVacancies(token);
     void loadVacancyApplications(token);
@@ -383,8 +532,8 @@ export default function AdminPage() {
 
     const payload = {
       ...form,
-      scheduledTime: new Date(form.scheduledTime).toISOString(),
-      estimatedTime: form.estimatedTime ? new Date(form.estimatedTime).toISOString() : undefined,
+      scheduledTime: airportInputToIso(form.scheduledTime),
+      estimatedTime: form.estimatedTime ? airportInputToIso(form.estimatedTime) : undefined,
       sector: form.sector || undefined,
       gate: form.gate || undefined,
       terminal: form.terminal || '1',
@@ -556,8 +705,8 @@ export default function AdminPage() {
       flight.flightNumber,
       flight.direction === 'departure' ? 'Вылет' : 'Прилёт',
       flight.city,
-      flight.scheduledTime ? new Date(flight.scheduledTime).toLocaleString('ru-RU') : '',
-      flight.estimatedTime ? new Date(flight.estimatedTime).toLocaleString('ru-RU') : '',
+      flight.scheduledTime ? formatAirportDateTime(flight.scheduledTime) : '',
+      flight.estimatedTime ? formatAirportDateTime(flight.estimatedTime) : '',
       flight.delayMinutes,
       STATUS_LABELS_RU[flight.status] ?? flight.status,
     ]);
@@ -579,10 +728,73 @@ export default function AdminPage() {
       ...prev,
       airlineName: preset.name,
       airlineCode: preset.code,
-      city: prev.city || preset.defaultCity || '',
-      cityCode: prev.cityCode || preset.defaultCityCode || '',
-      flightNumber: prev.flightNumber || preset.flightNumberPrefix || '',
+      city: prev.city || (preset.code === 'IH' ? 'Урджар' : ''),
+      cityCode: prev.cityCode || (preset.code === 'IH' ? 'UZR' : ''),
+      flightNumber: prev.flightNumber || (preset.code === 'IH' ? 'IH' : ''),
     }));
+  };
+
+  const handleSaveCarrier = async (event) => {
+    event.preventDefault();
+    setCarrierSaving(true);
+    setMessage('');
+    try {
+      const body = new FormData();
+      body.append('name', carrierName.trim());
+      body.append('code', carrierCode.trim().toUpperCase());
+      if (carrierSite.trim()) body.append('websiteUrl', carrierSite.trim());
+      if (carrierLogo) body.append('file', carrierLogo);
+      const response = await fetch(`${API_BASE}/airlines`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        handleSessionExpired();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(
+          Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Не удалось сохранить авиакомпанию',
+        );
+      }
+      setCarrierName('');
+      setCarrierCode('');
+      setCarrierSite('');
+      setCarrierLogo(null);
+      await reloadAirlines();
+      setMessage(`Авиакомпания ${data.name} сохранена. Она появится в рейсах, регистрации и у партнёров.`);
+    } catch (error) {
+      setMessage(error.message || 'Не удалось сохранить авиакомпанию');
+    } finally {
+      setCarrierSaving(false);
+    }
+  };
+
+  const handleDeleteCarrier = async (airline) => {
+    if (!airline.id) return;
+    const label = airline.builtin ? `убрать загруженный логотип ${airline.name}` : `удалить ${airline.name}`;
+    if (!confirm(`Точно ${label}?`)) return;
+    setMessage('');
+    try {
+      const response = await fetch(`${API_BASE}/airlines/${airline.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        handleSessionExpired();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(data?.message || 'Не удалось удалить авиакомпанию');
+      }
+      await reloadAirlines();
+      setMessage(airline.builtin ? 'Логотип сброшен' : 'Авиакомпания удалена');
+    } catch (error) {
+      setMessage(error.message || 'Не удалось удалить авиакомпанию');
+    }
   };
 
   const handleVacancySubmit = async (event) => {
@@ -771,7 +983,9 @@ export default function AdminPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Админка рейсов</h1>
-            <p className="text-sm text-gray-500">Управление онлайн-табло аэропорта</p>
+            <p className="text-sm text-gray-500">
+              Время везде по Семею, UTC+5. Правки рейсов AviationStack не затирает: он обновляет только статус и фактическое время.
+            </p>
           </div>
           <button
             onClick={handleLogout}
@@ -779,6 +993,261 @@ export default function AdminPage() {
           >
             Выйти
           </button>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Авиакомпании</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Название и логотип появятся в списке рейсов, в блоке регистрации и у авиакомпаний-партнёров.
+            Код — как в номере рейса: IQ, FS, DV.
+          </p>
+          <form onSubmit={handleSaveCarrier} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <label className="text-sm">
+              <span className="text-gray-600">Название</span>
+              <input
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2"
+                value={carrierName}
+                onChange={(e) => setCarrierName(e.target.value)}
+                placeholder="Vietjet Qazaqstan"
+                required
+              />
+            </label>
+            <label className="text-sm">
+              <span className="text-gray-600">Код</span>
+              <input
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 uppercase"
+                value={carrierCode}
+                onChange={(e) => setCarrierCode(e.target.value.toUpperCase())}
+                placeholder="IQ"
+                maxLength={3}
+                required
+              />
+            </label>
+            <label className="text-sm md:col-span-2">
+              <span className="text-gray-600">Сайт для регистрации</span>
+              <input
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2"
+                value={carrierSite}
+                onChange={(e) => setCarrierSite(e.target.value)}
+                placeholder="https://"
+              />
+            </label>
+            <label className="text-sm md:col-span-2">
+              <span className="text-gray-600">Логотип (PNG, JPEG, WebP)</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="mt-1 w-full text-sm"
+                onChange={(e) => setCarrierLogo(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <div className="md:col-span-2 flex items-end">
+              <button
+                type="submit"
+                disabled={carrierSaving}
+                className="rounded-xl bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 hover:opacity-90 disabled:opacity-50"
+              >
+                {carrierSaving ? 'Сохранение...' : 'Сохранить авиакомпанию'}
+              </button>
+            </div>
+          </form>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {airlines.map((airline) => {
+              const logo = airline.logoUrl || airline.logo;
+              return (
+                <div key={airline.code} className="flex items-center gap-3 rounded-xl border border-gray-200 p-3">
+                  <div className="w-20 h-12 bg-gray-50 rounded-lg flex items-center justify-center p-1 flex-shrink-0">
+                    {typeof logo === 'string' && logo ? (
+                      <img src={logo} alt={airline.name} className="max-h-10 object-contain" />
+                    ) : logo ? (
+                      <Image src={logo} alt={airline.name} width={72} height={36} className="object-contain" />
+                    ) : (
+                      <span className="text-xs font-bold text-gray-400">{airline.code}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-gray-900 truncate">{airline.name}</div>
+                    <div className="text-xs text-gray-500">{airline.code}</div>
+                  </div>
+                  {airline.id ? (
+                    <button
+                      type="button"
+                      className="text-sm text-red-600 hover:underline"
+                      onClick={() => void handleDeleteCarrier(airline)}
+                    >
+                      {airline.builtin ? 'Сбросить' : 'Удалить'}
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Расписание на неделю</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Загрузите фото нового расписания, поправьте рейсы и время в таблице и сохраните.
+            Сегодняшние рейсы сразу попадут на табло, а AviationStack подхватит их статусы.
+            {scheduleSource === 'default'
+              ? ' Сейчас показано встроенное расписание — сохраните его, чтобы закрепить.'
+              : ' Используется расписание из админки.'}
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+            <form onSubmit={handleSchedulePhotoUpload} className="space-y-3">
+              <div className="aspect-[3/4] overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                {schedulePhotoUrl ? (
+                  <img
+                    src={resolveUploadUrl(schedulePhotoUrl)}
+                    alt="Фото расписания"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-4 text-center text-sm text-gray-400">
+                    Фото расписания ещё не загружено
+                  </div>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="w-full text-sm"
+                onChange={(e) => setSchedulePhotoFile(e.target.files?.[0] ?? null)}
+              />
+              <button
+                type="submit"
+                disabled={scheduleLoading || !schedulePhotoFile}
+                className="w-full rounded-xl bg-blue-900 text-white text-sm font-semibold px-4 py-2.5 hover:opacity-90 disabled:opacity-50"
+              >
+                Загрузить фото
+              </button>
+            </form>
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500">
+                      <th className="py-2 pr-2">День</th>
+                      <th className="py-2 pr-2">Рейс</th>
+                      <th className="py-2 pr-2">Тип</th>
+                      <th className="py-2 pr-2">Город</th>
+                      <th className="py-2 pr-2">Время</th>
+                      <th className="py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scheduleEntries.map((entry) => (
+                      <tr key={entry.localKey} className="border-t border-gray-100">
+                        <td className="py-1.5 pr-2">
+                          <select
+                            className="rounded-lg border border-gray-200 px-2 py-1.5"
+                            value={entry.weekday}
+                            onChange={(e) =>
+                              updateScheduleEntry(entry.localKey, { weekday: Number(e.target.value) })
+                            }
+                          >
+                            {WEEKDAY_OPTIONS.map((day) => (
+                              <option key={day.value} value={day.value}>
+                                {day.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <input
+                            className="w-24 rounded-lg border border-gray-200 px-2 py-1.5 uppercase"
+                            value={entry.flightNumber}
+                            onChange={(e) =>
+                              updateScheduleEntry(entry.localKey, {
+                                flightNumber: e.target.value.toUpperCase(),
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <select
+                            className="rounded-lg border border-gray-200 px-2 py-1.5"
+                            value={entry.direction}
+                            onChange={(e) =>
+                              updateScheduleEntry(entry.localKey, { direction: e.target.value })
+                            }
+                          >
+                            <option value="departure">Вылет</option>
+                            <option value="arrival">Прилёт</option>
+                          </select>
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <input
+                            className="w-32 rounded-lg border border-gray-200 px-2 py-1.5"
+                            value={entry.city}
+                            onChange={(e) => updateScheduleEntry(entry.localKey, { city: e.target.value })}
+                          />
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <input
+                            type="time"
+                            className="rounded-lg border border-gray-200 px-2 py-1.5"
+                            value={entry.time}
+                            onChange={(e) => updateScheduleEntry(entry.localKey, { time: e.target.value })}
+                          />
+                        </td>
+                        <td className="py-1.5">
+                          <button
+                            type="button"
+                            className="text-red-600 hover:underline"
+                            onClick={() =>
+                              setScheduleEntries((rows) =>
+                                rows.filter((row) => row.localKey !== entry.localKey),
+                              )
+                            }
+                          >
+                            Удалить
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                  onClick={() =>
+                    setScheduleEntries((rows) => [
+                      ...rows,
+                      {
+                        localKey: `new-${Date.now()}`,
+                        weekday: 1,
+                        flightNumber: '',
+                        direction: 'departure',
+                        city: '',
+                        time: '12:00',
+                      },
+                    ])
+                  }
+                >
+                  Добавить рейс
+                </button>
+                <button
+                  type="button"
+                  disabled={scheduleLoading}
+                  onClick={() => void handleSaveSchedule()}
+                  className="rounded-xl bg-blue-900 text-white text-sm font-semibold px-4 py-2 hover:opacity-90 disabled:opacity-50"
+                >
+                  Сохранить расписание
+                </button>
+                <button
+                  type="button"
+                  disabled={scheduleLoading}
+                  onClick={() => void handleSyncAviation()}
+                  className="rounded-xl border border-blue-900 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50 disabled:opacity-50"
+                >
+                  Обновить статусы AviationStack
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
@@ -798,8 +1267,9 @@ export default function AdminPage() {
             <div className="text-sm md:col-span-2 lg:col-span-2">
               <span className="text-gray-600">Выбор авиакомпании</span>
               <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {AIRLINE_PRESETS.map((preset) => {
+                {airlines.map((preset) => {
                   const selected = form.airlineCode === preset.code;
+                  const logo = preset.logoUrl || preset.logo;
                   return (
                     <button
                       key={preset.code}
@@ -810,10 +1280,15 @@ export default function AdminPage() {
                           ? 'ring-2 ring-blue-400 border-blue-300'
                           : 'border-gray-200 hover:border-blue-200'
                       }`}
-                      style={{ backgroundColor: preset.bg, borderColor: selected ? '#93c5fd' : preset.border }}
                     >
                       <div className="w-16 h-10 bg-white rounded-lg border border-gray-100 flex items-center justify-center p-1">
-                        <Image src={preset.logo} alt={preset.name} width={52} height={28} className="object-contain" />
+                        {typeof logo === 'string' ? (
+                          <img src={logo} alt={preset.name} className="object-contain max-h-7" />
+                        ) : logo ? (
+                          <Image src={logo} alt={preset.name} width={52} height={28} className="object-contain" />
+                        ) : (
+                          <span className="text-xs font-bold text-gray-500">{preset.code}</span>
+                        )}
                       </div>
                       <div>
                         <div className="font-semibold text-gray-900 leading-tight">{preset.name}</div>
@@ -872,7 +1347,7 @@ export default function AdminPage() {
               />
             </label>
             <label className="text-sm">
-              <span className="text-gray-600">Плановое время</span>
+              <span className="text-gray-600">Плановое время (Семей, UTC+5)</span>
               <input
                 type="datetime-local"
                 className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2"
@@ -882,7 +1357,7 @@ export default function AdminPage() {
               />
             </label>
             <label className="text-sm">
-              <span className="text-gray-600">Фактическое/расчётное время</span>
+              <span className="text-gray-600">Фактическое время (Семей, UTC+5)</span>
               <input
                 type="datetime-local"
                 className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2"
@@ -992,9 +1467,9 @@ export default function AdminPage() {
                     <td className="py-2 pr-3">{flight.airlineName}</td>
                     <td className="py-2 pr-3">{flight.direction === 'departure' ? 'Вылет' : 'Прилёт'}</td>
                     <td className="py-2 pr-3">{flight.city}</td>
-                    <td className="py-2 pr-3">{new Date(flight.scheduledTime).toLocaleString('ru-RU')}</td>
+                    <td className="py-2 pr-3">{formatAirportDateTime(flight.scheduledTime)}</td>
                     <td className="py-2 pr-3">
-                      {flight.estimatedTime ? new Date(flight.estimatedTime).toLocaleString('ru-RU') : '—'}
+                      {flight.estimatedTime ? formatAirportDateTime(flight.estimatedTime) : '—'}
                     </td>
                     <td className="py-2 pr-3">{STATUS_LABELS_RU[flight.status] ?? flight.status}</td>
                     <td className="py-2 pr-3">{flight.gate ?? '—'}</td>
@@ -1081,14 +1556,10 @@ export default function AdminPage() {
                       <td className="py-2 pr-3">{flight.direction === 'departure' ? 'Вылет' : 'Прилёт'}</td>
                       <td className="py-2 pr-3">{flight.city}</td>
                       <td className="py-2 pr-3">
-                        {flight.scheduledTime
-                          ? new Date(flight.scheduledTime).toLocaleString('ru-RU')
-                          : '—'}
+                        {flight.scheduledTime ? formatAirportDateTime(flight.scheduledTime) : '—'}
                       </td>
                       <td className="py-2 pr-3">
-                        {flight.estimatedTime
-                          ? new Date(flight.estimatedTime).toLocaleString('ru-RU')
-                          : '—'}
+                        {flight.estimatedTime ? formatAirportDateTime(flight.estimatedTime) : '—'}
                       </td>
                       <td className="py-2 pr-3 font-semibold text-red-700">
                         {flight.delayMinutes > 0 ? `${flight.delayMinutes} мин` : '—'}

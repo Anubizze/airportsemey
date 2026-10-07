@@ -91,6 +91,7 @@ export const translations = {
       flyarystanDesc: 'Регистрация на рейс через официальный сайт или приложение FlyArystan',
       scatDesc: 'Онлайн-регистрация через официальный сайт SCAT Airlines',
       hiskyDesc: 'Онлайн-регистрация через официальный сайт Hi Sky',
+      siteDesc: 'Онлайн-регистрация через официальный сайт',
     },
     // News
     news: {
@@ -125,6 +126,7 @@ export const translations = {
       flyarystanDesc: 'Лоукостер Казахстана',
       scatDesc: 'Казахстанская авиакомпания',
       hiskyDesc: 'Авиакомпания Казахстана',
+      airlineDesc: 'Авиакомпания',
     },
     // Footer
     footer: {
@@ -178,7 +180,7 @@ export const translations = {
     },
     calendar: {
       title: 'Календарь регулярных рейсов',
-      subtitle: 'Плановые рейсы по дням недели',
+      subtitle: 'Плановые рейсы по дням недели, 1 сентября — 24 октября 2026',
       day: 'День',
       departures: 'Вылет из Семея',
       arrivals: 'Прилёт в Семей',
@@ -661,6 +663,7 @@ export const translations = {
       flyarystanDesc: 'FlyArystan ресми сайты немесе қолданбасы арқылы тіркелу',
       scatDesc: 'SCAT Airlines ресми сайты арқылы онлайн тіркелу',
       hiskyDesc: 'Hi Sky ресми сайты арқылы онлайн тіркелу',
+      siteDesc: 'Ресми сайт арқылы онлайн тіркелу',
     },
     news: {
       title: 'Жаңалықтар',
@@ -693,6 +696,7 @@ export const translations = {
       flyarystanDesc: 'Қазақстанның лоукостері',
       scatDesc: 'Қазақстандық авиакомпания',
       hiskyDesc: 'Қазақстандық авиакомпания',
+      airlineDesc: 'Авиакомпания',
     },
     footer: {
       description: 'Семей халықаралық әуежайы — ішкі және халықаралық ұшуларға арналған сенімді көлік торабы.',
@@ -744,7 +748,7 @@ export const translations = {
     },
     calendar: {
       title: 'Тұрақты рейстер күнтізбесі',
-      subtitle: 'Апта күндері бойынша жоспарлы рейстер',
+      subtitle: 'Апта күндері бойынша жоспарлы рейстер, 1 қыркүйек — 24 қазан 2026',
       day: 'Күн',
       departures: 'Семейден ұшу',
       arrivals: 'Семейге қону',
@@ -1226,6 +1230,7 @@ export const translations = {
       flyarystanDesc: 'Check in via FlyArystan official website or mobile app',
       scatDesc: 'Online check-in via SCAT Airlines official website',
       hiskyDesc: 'Online check-in via Hi Sky official website',
+      siteDesc: 'Online check-in on the airline website',
     },
     news: {
       title: 'News',
@@ -1258,6 +1263,7 @@ export const translations = {
       flyarystanDesc: 'Kazakhstan low-cost carrier',
       scatDesc: 'Kazakhstani airline',
       hiskyDesc: 'Kazakhstan airline',
+      airlineDesc: 'Airline',
     },
     footer: {
       description: 'Semey International Airport — your reliable hub for domestic and international flights.',
@@ -1309,7 +1315,7 @@ export const translations = {
     },
     calendar: {
       title: 'Weekly Flight Calendar',
-      subtitle: 'Planned flights by day of week',
+      subtitle: 'Planned flights by day of week, 1 September — 24 October 2026',
       day: 'Day',
       departures: 'Departures from Semey',
       arrivals: 'Arrivals to Semey',
