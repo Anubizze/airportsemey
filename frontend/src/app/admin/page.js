@@ -22,6 +22,7 @@ import {
   uploadPartnerDocument,
 } from '@/lib/documentsApi';
 import FuelStorageAdminSection from '@/components/admin/FuelStorageAdminSection';
+import ServicePricesAdminSection from '@/components/admin/ServicePricesAdminSection';
 import { AIRPORT_SERVICES } from '@/data/services';
 
 const API_BASE =
@@ -173,6 +174,7 @@ export default function AdminPage() {
   const [carrierSite, setCarrierSite] = useState('');
   const [carrierLogo, setCarrierLogo] = useState(null);
   const [carrierSaving, setCarrierSaving] = useState(false);
+  const [adminTab, setAdminTab] = useState('flights');
   const { airlines, reloadAirlines } = useAirlines();
 
   const isLogged = Boolean(token);
@@ -982,10 +984,8 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Админка рейсов</h1>
-            <p className="text-sm text-gray-500">
-              Время везде по Семею, UTC+5. Правки рейсов AviationStack не затирает: он обновляет только статус и фактическое время.
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">Админка</h1>
+            <p className="text-sm text-gray-500">Рейсы, расписание, цены услуг и материалы сайта.</p>
           </div>
           <button
             onClick={handleLogout}
@@ -995,6 +995,38 @@ export default function AdminPage() {
           </button>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          {[
+            ['flights', 'Рейсы'],
+            ['schedule', 'Расписание'],
+            ['prices', 'Цены'],
+            ['airlines', 'Авиакомпании'],
+            ['services', 'Фото услуг'],
+            ['jobs', 'Вакансии'],
+            ['docs', 'Документы'],
+            ['fuel', 'ГСМ'],
+            ['log', 'Журнал'],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setAdminTab(id)}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                adminTab === id ? 'bg-blue-900 text-white' : 'bg-white border border-gray-200 text-gray-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {message && <p className="text-sm text-blue-700">{message}</p>}
+
+        {adminTab === 'prices' && (
+          <ServicePricesAdminSection token={token} onMessage={setMessage} onAuthError={handleAuthError} />
+        )}
+
+        {adminTab === 'airlines' && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Авиакомпании</h2>
           <p className="text-sm text-gray-500 mb-4">
@@ -1083,7 +1115,9 @@ export default function AdminPage() {
             })}
           </div>
         </div>
+        )}
 
+        {adminTab === 'schedule' && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Расписание на неделю</h2>
           <p className="text-sm text-gray-500 mb-4">
@@ -1249,7 +1283,10 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+        )}
 
+        {adminTab === 'flights' && (
+        <>
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             {editingId ? 'Редактировать рейс' : 'Добавить рейс'}
@@ -1440,7 +1477,6 @@ export default function AdminPage() {
               Выбрана авиакомпания: <span className="font-medium text-gray-700">{selectedAirlinePreset.name}</span>
             </p>
           )}
-          {message && <p className="mt-4 text-sm text-blue-700">{message}</p>}
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
@@ -1572,7 +1608,10 @@ export default function AdminPage() {
             </table>
           </div>
         </div>
+        </>
+        )}
 
+        {adminTab === 'log' && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Лог изменений статусов ({filteredStatusHistory.length})
@@ -1703,7 +1742,10 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+        )}
 
+        {adminTab === 'jobs' && (
+        <>
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             {editingVacancyId ? 'Редактировать вакансию' : 'Добавить вакансию'}
@@ -1867,7 +1909,10 @@ export default function AdminPage() {
             </table>
           </div>
         </div>
+        </>
+        )}
 
+        {adminTab === 'services' && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Фото услуг аэропорта ({servicePhotos.length})
@@ -1975,7 +2020,9 @@ export default function AdminPage() {
             )}
           </div>
         </div>
+        )}
 
+        {adminTab === 'docs' && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Отчетность для партнёров ({partnerDocuments.length})
@@ -2109,13 +2156,17 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+        )}
 
+        {adminTab === 'fuel' && (
         <FuelStorageAdminSection
           token={token}
           onMessage={setMessage}
           onAuthError={handleAuthError}
         />
+        )}
 
+        {adminTab === 'jobs' && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Отклики на вакансии ({vacancyApplications.length})
@@ -2157,6 +2208,7 @@ export default function AdminPage() {
             </table>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

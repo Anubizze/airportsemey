@@ -10,6 +10,7 @@ import {
   mapApiPhotoToImage,
   mergeServicePhotos,
 } from '@/lib/servicesApi';
+import { fetchServicePrices } from '@/lib/servicePricesApi';
 import ServiceDetailModal from '@/components/passengers/ServiceDetailModal';
 
 export default function ServicesPage() {
@@ -17,6 +18,7 @@ export default function ServicesPage() {
   const p = t.pages.services;
   const [selectedService, setSelectedService] = useState(null);
   const [photosByService, setPhotosByService] = useState({});
+  const [prices, setPrices] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,6 +31,9 @@ export default function ServicesPage() {
       }
     };
     void load();
+    void fetchServicePrices().then((data) => {
+      if (!cancelled) setPrices(data);
+    }).catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -111,6 +116,12 @@ export default function ServicesPage() {
                         <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
                           {pickLocalized(service.desc, lang)}
                         </p>
+                        {service.id === 'vip-lounge' && prices?.vipOne && (
+                          <p className="mt-2 text-sm font-semibold text-gray-900">{prices.vipOne}</p>
+                        )}
+                        {service.id === 'left-luggage' && prices?.luggage && (
+                          <p className="mt-2 text-sm font-semibold text-gray-900">{prices.luggage}</p>
+                        )}
                         <span className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-blue-700 group-hover:gap-2 transition-all">
                           {p.openDetails}
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,6 +141,13 @@ export default function ServicesPage() {
       {selectedService && (
         <ServiceDetailModal
           service={selectedService}
+          price={
+            selectedService.id === 'vip-lounge'
+              ? prices?.vipOne
+              : selectedService.id === 'left-luggage'
+                ? prices?.luggage
+                : ''
+          }
           onClose={() => setSelectedService(null)}
         />
       )}

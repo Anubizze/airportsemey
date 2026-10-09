@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { pickLocalized } from '@/lib/locale';
+import { fetchServicePrices } from '@/lib/servicePricesApi';
 
 const VIP_SERVICES = {
   ru: ['Ускоренное прохождение контроля','Индивидуальная регистрация','Шведский стол и горячие напитки','Безалкогольные напитки и снеки','Высокоскоростной Wi-Fi','Спутниковое TV','Деловая зона с принтером','Душевая кабина','Трансфер до самолёта','Персональный ассистент'],
@@ -18,6 +20,19 @@ const ABOUT_TEXT = {
 export default function CipVipPage() {
   const { lang, t } = useLanguage();
   const p = t.pages.cipVip;
+  const [prices, setPrices] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchServicePrices()
+      .then((data) => {
+        if (!cancelled) setPrices(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <>
@@ -72,15 +87,15 @@ export default function CipVipPage() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                     <span className="text-gray-600">1 {p.perPassenger}</span>
-                    <span className="font-semibold text-gray-900">5 000 тг</span>
+                    <span className="font-semibold text-gray-900">{prices?.vipOne || '5 000 тг'}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                     <span className="text-gray-600">2–4 {p.passengers2to4}</span>
-                    <span className="font-semibold text-gray-900">4 000 тг/{p.perPassenger}</span>
+                    <span className="font-semibold text-gray-900">{prices?.vipFew || `4 000 тг/${p.perPassenger}`}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">{p.group5}</span>
-                    <span className="font-semibold text-gray-900">{p.fromPrice}</span>
+                    <span className="font-semibold text-gray-900">{prices?.vipGroup || p.fromPrice}</span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-400 mt-3">{p.priceNote}</p>

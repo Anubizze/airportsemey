@@ -1,11 +1,31 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import PageHero from '@/components/layout/PageHero';
 import { useLanguage } from '@/context/LanguageContext';
+import { fetchServicePrices, tariffCells } from '@/lib/servicePricesApi';
 
 export default function PartnerContentPage({ pageKey, parentCrumb }) {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   const p = t.pages[pageKey];
+  const [tariffRows, setTariffRows] = useState(null);
+
+  useEffect(() => {
+    if (pageKey !== 'tariffs') return undefined;
+    let cancelled = false;
+    fetchServicePrices()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.tariffs) && data.tariffs.length > 0) {
+          setTariffRows(data.tariffs);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pageKey]);
+
+  const tableRows = tariffRows ? tariffRows.map((row) => tariffCells(row, lang)) : p.table?.rows;
 
   return (
     <>
@@ -59,7 +79,7 @@ export default function PartnerContentPage({ pageKey, parentCrumb }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {p.table.rows.map((row, i) => (
+                    {tableRows.map((row, i) => (
                       <tr key={i} className="border-b border-gray-50 last:border-0">
                         {row.map((cell, j) => (
                           <td key={j} className="px-5 py-3 text-gray-700">{cell}</td>

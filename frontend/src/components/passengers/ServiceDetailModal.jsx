@@ -14,7 +14,7 @@ function formatPhoneDisplay(phone) {
   return phone;
 }
 
-export default function ServiceDetailModal({ service, onClose }) {
+export default function ServiceDetailModal({ service, price, onClose }) {
   const { lang, t } = useLanguage();
   const p = t.pages.services;
 
@@ -113,6 +113,7 @@ export default function ServiceDetailModal({ service, onClose }) {
               {p.about}
             </h3>
             <p className="text-sm text-gray-700 leading-relaxed">{details}</p>
+            {price ? <p className="mt-3 text-sm font-semibold text-gray-900">{price}</p> : null}
           </section>
 
           {/* Contacts & links */}
