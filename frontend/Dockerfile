@@ -1,10 +1,9 @@
-# syntax=docker/dockerfile:1
 FROM node:20-bookworm-slim
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN --network=host npm ci --no-audit --no-fund \
+RUN npm ci --no-audit --no-fund \
   && test -x node_modules/.bin/next
 
 COPY . .
