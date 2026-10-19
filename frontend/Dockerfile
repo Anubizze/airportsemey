@@ -3,7 +3,9 @@ FROM node:20-bookworm-slim
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' > /etc/resolv.conf \
+  && npm ci --no-audit --no-fund \
+  && test -x node_modules/.bin/next
 
 COPY . .
 
