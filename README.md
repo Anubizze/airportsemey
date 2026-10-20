@@ -36,7 +36,7 @@ airport/
 6. В **Environment** укажи `NEXT_PUBLIC_API_BASE_URL=https://abaiairport.kz/api` (или фактический публичный адрес API). Значение встраивается в клиентский код при сборке; после изменения нужен новый Deploy.
 7. В **Domains** укажи порт приложения **3000**, затем нажми **Deploy**.
 
-Конфигурация находится в `frontend/nixpacks.toml`: Node.js 20 из `package.json`, установка через pnpm по `pnpm-lock.yaml` вместе с зависимостями для сборки, `pnpm run build` и `pnpm run start`. Сервер слушает `0.0.0.0`; порт по умолчанию — 3000, его можно изменить переменной `PORT` вместе с портом в Domains. Dockerfile при выбранном Nixpacks не используется.
+Конфигурация находится в `frontend/nixpacks.toml`: Node.js 24 из `package.json` (нужна версия Nixpacks с поддержкой Node.js 24), установка через pnpm по `pnpm-lock.yaml` вместе с зависимостями для сборки, `pnpm run build` и `pnpm run start`. Сервер слушает `0.0.0.0`; порт по умолчанию — 3000, его можно изменить переменной `PORT` вместе с портом в Domains. Dockerfile при выбранном Nixpacks не используется.
 
 Если в логе снова появляется `npm ci`, проверь выбранный Build Type, Build Path и переопределения команд. Nixpacks также собирает Docker-образ и требует доступа сервера к реестрам образов и пакетов.
 
@@ -48,6 +48,7 @@ airport/
 2. [vercel.com/new](https://vercel.com/new) → Import Git Repository → выбери **airportsemey**
 3. **Root Directory:** `frontend` (**обязательно** — без этого сборка падает: «Couldn't find app directory»)
 4. Framework: **Next.js** (определится автоматически)
+   **Node.js Version:** `24.x` — также закреплена в `frontend/package.json`. Vercel больше не принимает Node.js 20 для новых сборок.
 5. **Environment Variables:**
    - `NEXT_PUBLIC_API_BASE_URL` = `https://твой-api.kz/api` (когда backend будет на сервере)
 6. Deploy
