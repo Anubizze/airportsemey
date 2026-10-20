@@ -3,6 +3,7 @@
 !/frontend/
 !/.gitignore
 !/README.md
+!/.github/
 
 # frontend
 frontend/node_modules/

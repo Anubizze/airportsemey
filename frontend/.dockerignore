@@ -3,3 +3,7 @@ node_modules
 *.log
 .env
 .env.*
+.vercel
+out
+build
+Dockerfile
