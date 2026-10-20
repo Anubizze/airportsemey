@@ -67,7 +67,7 @@ jobs:
           docker run --detach --name frontend-smoke \
             --publish 127.0.0.1:3000:3000 "$IMAGE:$COMMIT"
           curl --fail --silent --show-error --retry 12 --retry-delay 2 \
-            --retry-connrefused --max-time 10 \
+            --retry-all-errors --retry-max-time 60 --max-time 10 \
             http://127.0.0.1:3000/ --output /tmp/frontend.html
           grep -q '<html' /tmp/frontend.html
           asset=$(grep -oE '/_next/static/[^" ]+\.css' /tmp/frontend.html | head -n 1)
