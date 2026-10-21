@@ -1,9 +1,10 @@
-# Keep only the frontend and its repository documentation at the root.
+# Track the frontend, deployment support, and repository documentation.
 /*
 !/frontend/
 !/.gitignore
 !/README.md
 !/.github/
+!/fix.sh
 
 # frontend
 frontend/node_modules/

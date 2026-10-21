@@ -26,6 +26,20 @@ airport/
 
 Документация: [Dokploy — Going Production](https://docs.dokploy.com/docs/core/applications/going-production), [GitHub — Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
 
+## Восстановление маршрутов Docker на VPS
+
+На VPS `178.88.167.186` были адреса `172.17.0.1/16` на `docker0` и `172.18.0.1/16` на `docker_gwbridge`, но отсутствовали маршруты к этим сетям. Из-за этого Traefik отвечал внутри контейнера, а запросы через опубликованные порты зависали. Ручное восстановление двух маршрутов вернуло доступ к сайту и API. Причина удаления маршрутов не установлена; `docker0` в systemd-networkd имеет состояние `unmanaged`.
+
+Для восстановления этих маршрутов при запуске и перезапуске Docker предусмотрен [fix.sh](fix.sh). Запускать от root в консоли VPS:
+
+```bash
+curl -fLo /tmp/fix.sh https://raw.githubusercontent.com/Anubizze/airportsemey/main/fix.sh && bash /tmp/fix.sh
+```
+
+Установщик проверяет адреса обоих интерфейсов, проверяет синтаксис unit-файла, сохраняет предыдущую копию этого файла при наличии и устанавливает `/etc/systemd/system/airport-docker-routes.service`. Он включает и запускает только эту службу; файлы приложения, база данных и настройки внешнего интерфейса не изменяются. Проверка: `systemctl status airport-docker-routes.service --no-pager` — ожидается `active (exited)`. Существующий `docker.service` не перезапускается.
+
+Для отключения восстановления: `systemctl disable --now airport-docker-routes.service`. Это не удаляет уже добавленные маршруты. Если меняются подсети Docker, нужно обновить маршруты в этой службе.
+
 ## Альтернатива: Dokploy через Nixpacks
 
 1. Репозиторий: `https://github.com/Anubizze/airportsemey`, ветка `main`.
