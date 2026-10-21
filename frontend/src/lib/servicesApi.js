@@ -5,13 +5,25 @@ const API_BASE =
   'http://localhost:4000/api';
 
 export function getUploadsBaseUrl() {
-  return API_BASE.replace(/\/api\/?$/, '');
+  // Uploads must use the same backend route as the API behind the site proxy.
+  return API_BASE;
 }
 
 export function resolveUploadUrl(path) {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  return `${getUploadsBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+  const relativePath = path.replace(/^\/?api\/uploads\//, '/uploads/');
+  return `${getUploadsBaseUrl()}${relativePath.startsWith('/') ? relativePath : `/${relativePath}`}`;
+}
+
+async function readPhotoResponse(response, fallback) {
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 401) throw new Error('SESSION_EXPIRED');
+  if (!response.ok) {
+    const message = Array.isArray(data?.message) ? data.message.join(', ') : data?.message;
+    throw new Error(message || fallback);
+  }
+  return data;
 }
 
 export function mapApiPhotoToImage(photo) {
@@ -46,11 +58,7 @@ export async function fetchAdminServicePhotos(token) {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data?.message || 'Не удалось загрузить фото услуг');
-  }
-  return data;
+  return readPhotoResponse(response, 'Не удалось загрузить фото услуг');
 }
 
 export async function uploadServicePhoto(token, { serviceId, file, altRu, altKz, altEn, sortOrder }) {
@@ -69,13 +77,21 @@ export async function uploadServicePhoto(token, { serviceId, file, altRu, altKz,
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(
-      Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Ошибка загрузки',
-    );
+  return readPhotoResponse(response, 'Ошибка загрузки');
+}
+
+export async function updateServicePhoto(token, id, { file, ...fields }) {
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    if (value !== undefined && value !== null) formData.append(key, String(value));
   }
-  return data;
+  if (file) formData.append('file', file);
+  const response = await fetch(`${API_BASE}/service-photos/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  return readPhotoResponse(response, 'Не удалось сохранить фото');
 }
 
 export async function deleteServicePhoto(token, id) {
@@ -83,11 +99,7 @@ export async function deleteServicePhoto(token, id) {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data?.message || 'Ошибка удаления');
-  }
-  return data;
+  return readPhotoResponse(response, 'Ошибка удаления');
 }
 
 export function mergeServicePhotos(service, apiPhotos = []) {

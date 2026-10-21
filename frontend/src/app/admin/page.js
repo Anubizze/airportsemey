@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAirlines } from '@/context/AirlinesContext';
 import {
   deleteVacancy,
@@ -14,7 +14,9 @@ import {
   fetchAdminServicePhotos,
   resolveUploadUrl,
   uploadServicePhoto,
+  updateServicePhoto,
 } from '@/lib/servicesApi';
+import ServicePhotoPreview from '@/components/admin/ServicePhotoPreview';
 import {
   deletePartnerDocument,
   fetchAdminPartnerDocuments,
@@ -155,8 +157,15 @@ export default function AdminPage() {
   const [photoServiceId, setPhotoServiceId] = useState(AIRPORT_SERVICES[0]?.id ?? 'cafe-aspan');
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoAlt, setPhotoAlt] = useState('');
+  const [photoAltKz, setPhotoAltKz] = useState('');
+  const [photoAltEn, setPhotoAltEn] = useState('');
   const [photoSortOrder, setPhotoSortOrder] = useState(0);
   const [photoUploadLoading, setPhotoUploadLoading] = useState(false);
+  const [editingPhotoId, setEditingPhotoId] = useState(null);
+  const [photoError, setPhotoError] = useState('');
+  const [photoMessage, setPhotoMessage] = useState('');
+  const photoFormRef = useRef(null);
+  const photoFileInputRef = useRef(null);
   const [partnerDocuments, setPartnerDocuments] = useState([]);
   const [docYear, setDocYear] = useState(new Date().getFullYear());
   const [docTitle, setDocTitle] = useState('');
@@ -446,11 +455,12 @@ export default function AdminPage() {
   };
 
   const loadServicePhotos = async (authToken) => {
+    setPhotoError('');
     try {
       const data = await fetchAdminServicePhotos(authToken);
       setServicePhotos(Array.isArray(data) ? data : []);
-    } catch {
-      setServicePhotos([]);
+    } catch (error) {
+      if (!handleAuthError(error)) setPhotoError(error.message || 'Не удалось загрузить фото услуг');
     }
   };
 
@@ -843,32 +853,87 @@ export default function AdminPage() {
     }
   };
 
+  const resetPhotoForm = () => {
+    setEditingPhotoId(null);
+    setPhotoFiles([]);
+    setPhotoAlt('');
+    setPhotoAltKz('');
+    setPhotoAltEn('');
+    setPhotoSortOrder(0);
+    if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+  };
+
+  const handleEditPhoto = (photo) => {
+    resetPhotoForm();
+    setEditingPhotoId(photo.id);
+    setPhotoServiceId(photo.serviceId === 'cafe-lido' ? 'cafe-aspan' : photo.serviceId);
+    setPhotoAlt(photo.altRu ?? '');
+    setPhotoAltKz(photo.altKz ?? '');
+    setPhotoAltEn(photo.altEn ?? '');
+    setPhotoSortOrder(photo.sortOrder ?? 0);
+    setPhotoError('');
+    setPhotoMessage('');
+    photoFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const handlePhotoUpload = async (event) => {
     event.preventDefault();
-    if (!photoFiles.length) {
-      setMessage('Выберите одно или несколько изображений');
+    if (photoUploadLoading) return;
+    setPhotoError('');
+    setPhotoMessage('');
+    if (!editingPhotoId && !photoFiles.length) {
+      setPhotoError('Выберите одно или несколько изображений');
+      return;
+    }
+    if (editingPhotoId && photoFiles.length > 1) {
+      setPhotoError('Для замены выберите одно изображение');
+      return;
+    }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (photoFiles.some((file) => !allowedTypes.includes(file.type) || file.size > 5 * 1024 * 1024)) {
+      setPhotoError('Выберите JPEG, PNG, WebP или GIF размером до 5 МБ каждый');
       return;
     }
     setPhotoUploadLoading(true);
-    setMessage('');
+    let uploadedCount = 0;
     try {
-      for (let i = 0; i < photoFiles.length; i++) {
-        await uploadServicePhoto(token, {
+      if (editingPhotoId) {
+        await updateServicePhoto(token, editingPhotoId, {
           serviceId: photoServiceId,
-          file: photoFiles[i],
+          file: photoFiles[0],
           altRu: photoAlt,
-          altKz: photoAlt,
-          altEn: photoAlt,
-          sortOrder: photoSortOrder + i,
+          altKz: photoAltKz,
+          altEn: photoAltEn,
+          sortOrder: photoSortOrder,
         });
+        setPhotoMessage('Изменения сохранены');
+      } else {
+        for (let i = 0; i < photoFiles.length; i++) {
+          await uploadServicePhoto(token, {
+            serviceId: photoServiceId,
+            file: photoFiles[i],
+            altRu: photoAlt,
+            altKz: photoAltKz || photoAlt,
+            altEn: photoAltEn || photoAlt,
+            sortOrder: photoSortOrder + i,
+          });
+          uploadedCount++;
+        }
+        setPhotoMessage(`Загружено фото: ${uploadedCount}`);
       }
-      setMessage(`Загружено фото: ${photoFiles.length}`);
-      setPhotoFiles([]);
-      setPhotoAlt('');
-      setPhotoSortOrder(0);
+      resetPhotoForm();
       await loadServicePhotos(token);
     } catch (error) {
-      setMessage(error.message || 'Ошибка загрузки фото');
+      if (!handleAuthError(error)) {
+        // Keep only files that still need uploading after a partial batch failure.
+        if (uploadedCount) {
+          setPhotoFiles((files) => files.slice(uploadedCount));
+          setPhotoSortOrder((order) => order + uploadedCount);
+          if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+          await loadServicePhotos(token);
+        }
+        setPhotoError(`${uploadedCount ? `Загружено ${uploadedCount} фото. ` : ''}${error.message || 'Ошибка сохранения фото'}`);
+      }
     } finally {
       setPhotoUploadLoading(false);
     }
@@ -876,13 +941,15 @@ export default function AdminPage() {
 
   const handleDeletePhoto = async (id) => {
     if (!confirm('Удалить фото?')) return;
-    setMessage('');
+    setPhotoError('');
+    setPhotoMessage('');
     try {
       await deleteServicePhoto(token, id);
-      setMessage('Фото удалено');
+      if (editingPhotoId === id) resetPhotoForm();
+      setPhotoMessage('Фото удалено');
       await loadServicePhotos(token);
     } catch (error) {
-      setMessage(error.message || 'Ошибка удаления фото');
+      if (!handleAuthError(error)) setPhotoError(error.message || 'Ошибка удаления фото');
     }
   };
 
@@ -1917,7 +1984,11 @@ export default function AdminPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Фото услуг аэропорта ({servicePhotos.length})
           </h2>
-          <form onSubmit={handlePhotoUpload} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {photoError && <p role="alert" className="mb-4 text-sm text-red-600">{photoError}</p>}
+          {photoMessage && <p role="status" className="mb-4 text-sm text-green-700">{photoMessage}</p>}
+          {editingPhotoId && <p className="mb-4 text-sm font-medium text-blue-900">Редактирование фото. Выберите новый файл, если хотите заменить изображение.</p>}
+          <form ref={photoFormRef} onSubmit={handlePhotoUpload} className="mb-6 scroll-mt-24">
+          <fieldset disabled={photoUploadLoading} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <label className="text-sm md:col-span-2">
               <span className="text-gray-600">Услуга</span>
               <select
@@ -1943,41 +2014,56 @@ export default function AdminPage() {
               />
             </label>
             <label className="text-sm md:col-span-2">
-              <span className="text-gray-600">Подпись к фото (необязательно)</span>
+              <span className="text-gray-600">Подпись на русском (необязательно)</span>
               <input
                 className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2"
                 value={photoAlt}
                 onChange={(e) => setPhotoAlt(e.target.value)}
+                maxLength={255}
                 placeholder="Кафе «Аспан»"
               />
             </label>
+            <label className="text-sm">
+              <span className="text-gray-600">Подпись на казахском</span>
+              <input className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2" value={photoAltKz} onChange={(e) => setPhotoAltKz(e.target.value)} maxLength={255} />
+            </label>
+            <label className="text-sm">
+              <span className="text-gray-600">Подпись на английском</span>
+              <input className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2" value={photoAltEn} onChange={(e) => setPhotoAltEn(e.target.value)} maxLength={255} />
+            </label>
             <label className="text-sm md:col-span-2">
-              <span className="text-gray-600">Файлы (можно выбрать несколько, JPEG/PNG/WebP, до 5 МБ каждый)</span>
+              <span className="text-gray-600">{editingPhotoId ? 'Заменить файл (необязательно)' : 'Файлы (можно выбрать несколько)'} — JPEG/PNG/WebP/GIF, до 5 МБ каждый</span>
               <input
+                ref={photoFileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
-                multiple
+                multiple={!editingPhotoId}
                 className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2"
                 onChange={(e) => setPhotoFiles(Array.from(e.target.files ?? []))}
               />
               {photoFiles.length > 0 && (
                 <span className="mt-1 block text-xs text-gray-500">
-                  Выбрано файлов: {photoFiles.length}
+                  Выбрано файлов: {photoFiles.length} ({photoFiles.map((file) => file.name).join(', ')})
                 </span>
               )}
             </label>
-            <div className="md:col-span-4 flex items-center gap-3">
+            <div className="md:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-3">
               <button
                 type="submit"
-                disabled={photoUploadLoading || photoFiles.length === 0}
+                disabled={photoUploadLoading || (!editingPhotoId && photoFiles.length === 0)}
                 className="rounded-xl bg-blue-900 text-white text-sm font-semibold px-5 py-2.5 hover:opacity-90 disabled:opacity-50"
               >
                 {photoUploadLoading
-                  ? 'Загрузка...'
-                  : photoFiles.length > 1
+                  ? 'Сохранение...'
+                  : editingPhotoId
+                    ? 'Сохранить изменения'
+                    : photoFiles.length > 1
                     ? `Загрузить ${photoFiles.length} фото`
                     : 'Загрузить фото'}
               </button>
+              {editingPhotoId && (
+                <button type="button" onClick={resetPhotoForm} className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100">Отмена</button>
+              )}
               <button
                 type="button"
                 onClick={() => void loadServicePhotos(token)}
@@ -1986,6 +2072,7 @@ export default function AdminPage() {
                 Обновить
               </button>
             </div>
+          </fieldset>
           </form>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1996,24 +2083,33 @@ export default function AdminPage() {
             ) : (
               servicePhotos.map((photo) => (
                 <div key={photo.id} className="rounded-xl border border-gray-100 overflow-hidden bg-gray-50">
-                  <div className="relative aspect-[4/3] bg-gray-200">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                  <ServicePhotoPreview
+                      key={photo.url}
                       src={resolveUploadUrl(photo.url)}
                       alt={photo.altRu || getServiceTitle(photo.serviceId)}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+                  />
                   <div className="p-3">
                     <div className="text-sm font-medium text-gray-900">{getServiceTitle(photo.serviceId)}</div>
                     {photo.altRu ? <div className="text-xs text-gray-500 mt-1">{photo.altRu}</div> : null}
+                    <div className="mt-1 text-xs text-gray-500">Порядок: {photo.sortOrder}</div>
+                    <div className="mt-3 flex gap-2">
                     <button
                       type="button"
+                      disabled={photoUploadLoading}
+                      onClick={() => handleEditPhoto(photo)}
+                      className="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      Редактировать
+                    </button>
+                    <button
+                      type="button"
+                      disabled={photoUploadLoading}
                       onClick={() => void handleDeletePhoto(photo.id)}
-                      className="mt-3 rounded-lg border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                      className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
                     >
                       Удалить
                     </button>
+                    </div>
                   </div>
                 </div>
               ))
