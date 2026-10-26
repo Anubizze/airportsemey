@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
+import { readFile } from 'node:fs/promises';
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -9,9 +10,32 @@ registerHooks({
   },
 });
 const { DEFAULT_SCHEDULE_ENTRIES, groupScheduleByDay } = await import('../src/data/schedule.js');
-const { fetchSchedule } = await import('../src/lib/scheduleApi.js');
+const { fetchSchedule, normalizeScheduleBoard } = await import('../src/lib/scheduleApi.js');
 const { fetchFlights, applyFlightEvent } = await import('../src/lib/flightsApi.js');
 const { getScheduledFlights } = await import('../src/data/flights.js');
+const legacyBoard = JSON.parse(await readFile(new URL('./fixtures/legacySchedule.json', import.meta.url), 'utf8'));
+
+test('the actual legacy API response keeps all times and periods after every refresh', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json(legacyBoard));
+  for (let refresh = 0; refresh < 3; refresh++) {
+    const board = await fetchSchedule();
+    assert.equal(board.entries.length, 50);
+    assert.ok(board.entries.every((entry) => entry.counterpartTime && entry.validFrom && entry.validTo));
+    const monday = groupScheduleByDay(board.entries).mon;
+    assert.equal(monday.departures[0].counterpartTime, '11:45');
+    assert.equal(monday.arrivals.at(-1).flightNumber, 'FS7151');
+    assert.equal(monday.arrivals.at(-1).counterpartTime, '16:55');
+    assert.equal(monday.arrivals.at(-1).validTo, '2027-03-22');
+  }
+});
+
+test('current API data and independently edited legacy plans remain authoritative', () => {
+  const explicit = normalizeScheduleBoard({ ...legacyBoard, schemaVersion: 2 });
+  assert.equal(explicit.entries[0].counterpartTime, null);
+  const custom = structuredClone(legacyBoard);
+  custom.entries[0].time = '10:25';
+  assert.deepEqual(normalizeScheduleBoard(custom).entries, custom.entries);
+});
 
 test('winter timetable preserves all 50 flight occurrences and the confirmed exceptions', () => {
   assert.equal(DEFAULT_SCHEDULE_ENTRIES.length, 50);

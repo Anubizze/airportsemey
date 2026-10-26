@@ -58,12 +58,22 @@ export default function WeeklyFlightCalendar({ periodFrom = '', periodTo = '' })
 
   useEffect(() => {
     let cancelled = false;
+    let loading = false;
+    let controller = null;
     const load = async () => {
+      if (loading || cancelled) return;
+      loading = true;
+      controller = new AbortController();
+      const request = controller;
+      const timeout = window.setTimeout(() => request.abort(), 15000);
       try {
-        const board = await fetchSchedule();
+        const board = await fetchSchedule({ signal: request.signal });
         if (!cancelled) setEntries(board.entries);
       } catch {
         // Keep the latest timetable when the API is temporarily unavailable.
+      } finally {
+        window.clearTimeout(timeout);
+        loading = false;
       }
     };
     void load();
@@ -71,6 +81,7 @@ export default function WeeklyFlightCalendar({ periodFrom = '', periodTo = '' })
     window.addEventListener('focus', load);
     return () => {
       cancelled = true;
+      controller?.abort();
       window.clearInterval(timer);
       window.removeEventListener('focus', load);
     };

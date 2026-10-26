@@ -26,6 +26,7 @@ import {
 import FuelStorageAdminSection from '@/components/admin/FuelStorageAdminSection';
 import ServicePricesAdminSection from '@/components/admin/ServicePricesAdminSection';
 import { AIRPORT_SERVICES } from '@/data/services';
+import { normalizeScheduleBoard } from '@/lib/scheduleApi';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ??
@@ -307,7 +308,7 @@ export default function AdminPage() {
       setMessage(data?.message || 'Не удалось загрузить расписание');
       return;
     }
-    const entries = Array.isArray(data.entries) ? data.entries : [];
+    const entries = normalizeScheduleBoard(data).entries;
     setScheduleEntries(
       entries.map((entry, index) => ({
         localKey: `${entry.weekday}-${entry.flightNumber}-${entry.direction}-${index}`,
