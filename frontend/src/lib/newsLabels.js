@@ -36,7 +36,7 @@ export function formatNewsDate(article, lang) {
 
 export const NEWS_SOURCE_FILTERS = [
   { key: 'akorda', labelKey: 'akorda' },
-  { key: 'abay', labelKey: 'abay' },
   { key: 'transport', labelKey: 'transport' },
+  { key: 'abay', labelKey: 'abay' },
   { key: 'aviation', labelKey: 'aviation' },
 ];

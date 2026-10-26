@@ -180,7 +180,8 @@ export const translations = {
     },
     calendar: {
       title: 'Календарь регулярных рейсов',
-      subtitle: 'Плановые рейсы по дням недели, 1 сентября — 24 октября 2026',
+      subtitle: 'Плановые рейсы по дням недели. Период действия указан у каждого рейса.',
+      period: 'Период',
       day: 'День',
       departures: 'Вылет из Семея',
       arrivals: 'Прилёт в Семей',
@@ -748,7 +749,8 @@ export const translations = {
     },
     calendar: {
       title: 'Тұрақты рейстер күнтізбесі',
-      subtitle: 'Апта күндері бойынша жоспарлы рейстер, 1 қыркүйек — 24 қазан 2026',
+      subtitle: 'Апта күндері бойынша жоспарлы рейстер. Әр рейстің мерзімі көрсетілген.',
+      period: 'Мерзімі',
       day: 'Күн',
       departures: 'Семейден ұшу',
       arrivals: 'Семейге қону',
@@ -1315,7 +1317,8 @@ export const translations = {
     },
     calendar: {
       title: 'Weekly Flight Calendar',
-      subtitle: 'Planned flights by day of week, 1 September — 24 October 2026',
+      subtitle: 'Planned flights by day of week. Each flight shows its validity period.',
+      period: 'Period',
       day: 'Day',
       departures: 'Departures from Semey',
       arrivals: 'Arrivals to Semey',

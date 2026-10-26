@@ -77,7 +77,7 @@ export default function SchedulePage() {
           <div className="pt-4 border-t border-gray-200">
             <h2 className="text-xl font-bold text-gray-900 mb-1">{p.regularTitle}</h2>
             <p className="text-sm text-gray-500 mb-6">{p.regularHint}</p>
-            <WeeklyFlightCalendar />
+            <WeeklyFlightCalendar periodFrom={periodFrom} periodTo={periodTo} />
           </div>
         </div>
       </div>

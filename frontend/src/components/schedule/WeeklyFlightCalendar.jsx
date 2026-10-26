@@ -1,98 +1,15 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 
-export const WEEK_SCHEDULE = {
-  mon: {
-    departures: [
-      { flightNumber: 'IQ374', city: 'Astana', timeFromSemey: '09:45', timeToDest: '11:20' },
-      { flightNumber: 'FS7152', city: 'Almaty', timeFromSemey: '13:35', timeToDest: '15:15' },
-      { flightNumber: 'FS7352', city: 'Astana', timeFromSemey: '16:20', timeToDest: '17:50' },
-    ],
-    arrivals: [
-      { flightNumber: 'IQ373', city: 'Astana', timeFromOrigin: '07:45', timeToSemey: '09:20' },
-      { flightNumber: 'FS7151', city: 'Almaty', timeFromOrigin: '11:30', timeToSemey: '13:05' },
-      { flightNumber: 'FS7351', city: 'Astana', timeFromOrigin: '14:30', timeToSemey: '15:50' },
-    ],
-  },
-  tue: {
-    departures: [
-      { flightNumber: 'IH3107', city: 'Urzhar', timeFromSemey: '09:10', timeToDest: '10:30' },
-      { flightNumber: 'FS7152', city: 'Almaty', timeFromSemey: '13:35', timeToDest: '15:15' },
-      { flightNumber: 'FS7352', city: 'Astana', timeFromSemey: '16:20', timeToDest: '17:50' },
-      { flightNumber: 'KC7154', city: 'Almaty', timeFromSemey: '17:55', timeToDest: '19:25' },
-    ],
-    arrivals: [
-      { flightNumber: 'IH3108', city: 'Urzhar', timeFromOrigin: '11:00', timeToSemey: '12:20' },
-      { flightNumber: 'FS7151', city: 'Almaty', timeFromOrigin: '11:30', timeToSemey: '13:05' },
-      { flightNumber: 'FS7351', city: 'Astana', timeFromOrigin: '14:30', timeToSemey: '15:50' },
-      { flightNumber: 'KC7153', city: 'Almaty', timeFromOrigin: '15:50', timeToSemey: '17:25' },
-    ],
-  },
-  wed: {
-    departures: [
-      { flightNumber: 'IQ374', city: 'Astana', timeFromSemey: '09:45', timeToDest: '11:20' },
-      { flightNumber: 'FS7152', city: 'Almaty', timeFromSemey: '13:35', timeToDest: '15:15' },
-      { flightNumber: 'FS7352', city: 'Astana', timeFromSemey: '16:20', timeToDest: '17:50' },
-    ],
-    arrivals: [
-      { flightNumber: 'IQ373', city: 'Astana', timeFromOrigin: '07:45', timeToSemey: '09:20' },
-      { flightNumber: 'FS7151', city: 'Almaty', timeFromOrigin: '11:30', timeToSemey: '13:05' },
-      { flightNumber: 'FS7351', city: 'Astana', timeFromOrigin: '14:30', timeToSemey: '15:50' },
-    ],
-  },
-  thu: {
-    departures: [
-      { flightNumber: 'FS7152', city: 'Almaty', timeFromSemey: '13:35', timeToDest: '15:15' },
-      { flightNumber: 'FS7352', city: 'Astana', timeFromSemey: '16:20', timeToDest: '17:50' },
-    ],
-    arrivals: [
-      { flightNumber: 'FS7151', city: 'Almaty', timeFromOrigin: '11:30', timeToSemey: '13:05' },
-      { flightNumber: 'FS7351', city: 'Astana', timeFromOrigin: '14:30', timeToSemey: '15:50' },
-    ],
-  },
-  fri: {
-    departures: [
-      { flightNumber: 'IH3107', city: 'Urzhar', timeFromSemey: '09:10', timeToDest: '10:30' },
-      { flightNumber: 'IQ374', city: 'Astana', timeFromSemey: '09:45', timeToDest: '11:20' },
-      { flightNumber: 'FS7152', city: 'Almaty', timeFromSemey: '13:35', timeToDest: '15:15' },
-      { flightNumber: 'FS7352', city: 'Astana', timeFromSemey: '16:20', timeToDest: '17:50' },
-      { flightNumber: 'FS7154', city: 'Almaty', timeFromSemey: '17:50', timeToDest: '19:30' },
-    ],
-    arrivals: [
-      { flightNumber: 'IQ373', city: 'Astana', timeFromOrigin: '07:45', timeToSemey: '09:20' },
-      { flightNumber: 'IH3108', city: 'Urzhar', timeFromOrigin: '11:00', timeToSemey: '12:20' },
-      { flightNumber: 'FS7151', city: 'Almaty', timeFromOrigin: '11:30', timeToSemey: '13:05' },
-      { flightNumber: 'FS7351', city: 'Astana', timeFromOrigin: '14:30', timeToSemey: '15:50' },
-      { flightNumber: 'FS7153', city: 'Almaty', timeFromOrigin: '15:50', timeToSemey: '17:20' },
-    ],
-  },
-  sat: {
-    departures: [
-      { flightNumber: 'FS7152', city: 'Almaty', timeFromSemey: '13:35', timeToDest: '15:15' },
-      { flightNumber: 'FS7352', city: 'Astana', timeFromSemey: '16:20', timeToDest: '17:50' },
-    ],
-    arrivals: [
-      { flightNumber: 'FS7151', city: 'Almaty', timeFromOrigin: '11:30', timeToSemey: '13:05' },
-      { flightNumber: 'FS7351', city: 'Astana', timeFromOrigin: '14:30', timeToSemey: '15:50' },
-    ],
-  },
-  sun: {
-    departures: [
-      { flightNumber: 'IQ374', city: 'Astana', timeFromSemey: '09:45', timeToDest: '11:20' },
-      { flightNumber: 'FS7152', city: 'Almaty', timeFromSemey: '13:35', timeToDest: '15:15' },
-      { flightNumber: 'FS7352', city: 'Astana', timeFromSemey: '16:20', timeToDest: '17:50' },
-    ],
-    arrivals: [
-      { flightNumber: 'IQ373', city: 'Astana', timeFromOrigin: '07:45', timeToSemey: '09:20' },
-      { flightNumber: 'FS7151', city: 'Almaty', timeFromOrigin: '11:30', timeToSemey: '13:05' },
-      { flightNumber: 'FS7351', city: 'Astana', timeFromOrigin: '14:30', timeToSemey: '15:50' },
-    ],
-  },
-};
+import { DEFAULT_SCHEDULE_ENTRIES, WEEK_DAYS, groupScheduleByDay } from '@/data/schedule';
+import { fetchSchedule } from '@/lib/scheduleApi';
+import { getLocale, translateCity } from '@/lib/locale';
 
-function FlightsBlock({ title, rows, cityColLabel, timeFromLabel, timeToLabel, emptyLabel }) {
+export const WEEK_SCHEDULE = groupScheduleByDay(DEFAULT_SCHEDULE_ENTRIES);
+
+function FlightsBlock({ title, rows, cityColLabel, timeFromLabel, timeToLabel, emptyLabel, periodLabel }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
@@ -109,6 +26,7 @@ function FlightsBlock({ title, rows, cityColLabel, timeFromLabel, timeToLabel, e
                 <th className="px-4 py-2.5">{timeToLabel}</th>
                 <th className="px-4 py-2.5">{cityColLabel}</th>
                 <th className="px-4 py-2.5">№</th>
+                <th className="px-4 py-2.5">{periodLabel}</th>
               </tr>
             </thead>
             <tbody>
@@ -118,6 +36,7 @@ function FlightsBlock({ title, rows, cityColLabel, timeFromLabel, timeToLabel, e
                   <td className="px-4 py-2.5 text-gray-700">{item.timeTo}</td>
                   <td className="px-4 py-2.5 text-gray-700">{item.city}</td>
                   <td className="px-4 py-2.5 font-mono font-semibold text-blue-900">{item.flightNumber}</td>
+                  <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">{item.period}</td>
                 </tr>
               ))}
             </tbody>
@@ -128,28 +47,47 @@ function FlightsBlock({ title, rows, cityColLabel, timeFromLabel, timeToLabel, e
   );
 }
 
-export default function WeeklyFlightCalendar() {
-  const { t } = useLanguage();
+export default function WeeklyFlightCalendar({ periodFrom = '', periodTo = '' }) {
+  const { t, lang } = useLanguage();
   const labels = t.calendar;
-
-  const dayKeys = useMemo(() => Object.keys(WEEK_SCHEDULE), []);
+  const [entries, setEntries] = useState(DEFAULT_SCHEDULE_ENTRIES);
   const [activeDay, setActiveDay] = useState('mon');
+  const week = useMemo(() => groupScheduleByDay(entries, periodFrom, periodTo), [entries, periodFrom, periodTo]);
+  const dayKeys = WEEK_DAYS;
+  const dayData = week[activeDay];
 
-  const dayData = WEEK_SCHEDULE[activeDay] ?? WEEK_SCHEDULE.mon;
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const board = await fetchSchedule();
+        if (!cancelled) setEntries(board.entries);
+      } catch {
+        // Keep the latest timetable when the API is temporarily unavailable.
+      }
+    };
+    void load();
+    const timer = window.setInterval(load, 30000);
+    window.addEventListener('focus', load);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', load);
+    };
+  }, []);
 
-  const departures = dayData.departures.map((item) => ({
+  const dateLabel = (value) => value
+    ? new Date(`${value}T00:00:00`).toLocaleDateString(getLocale(lang))
+    : '…';
+  const mapRow = (item) => ({
     flightNumber: item.flightNumber,
-    city: t.cities[item.city] ?? item.city,
-    timeFrom: item.timeFromSemey,
-    timeTo: item.timeToDest,
-  }));
-
-  const arrivals = dayData.arrivals.map((item) => ({
-    flightNumber: item.flightNumber,
-    city: t.cities[item.city] ?? item.city,
-    timeFrom: item.timeFromOrigin,
-    timeTo: item.timeToSemey,
-  }));
+    city: translateCity(item.city, t.cities),
+    timeFrom: item.direction === 'departure' ? item.time : item.counterpartTime || '—',
+    timeTo: item.direction === 'arrival' ? item.time : item.counterpartTime || '—',
+    period: item.validFrom || item.validTo ? `${dateLabel(item.validFrom)} – ${dateLabel(item.validTo)}` : '—',
+  });
+  const departures = dayData.departures.map(mapRow);
+  const arrivals = dayData.arrivals.map(mapRow);
 
   return (
     <section className="mt-8">
@@ -186,6 +124,7 @@ export default function WeeklyFlightCalendar() {
           timeFromLabel={labels.depTime}
           timeToLabel={labels.arrTime}
           emptyLabel={labels.empty}
+          periodLabel={labels.period}
         />
         <FlightsBlock
           title={labels.arrivals}
@@ -194,6 +133,7 @@ export default function WeeklyFlightCalendar() {
           timeFromLabel={labels.depTime}
           timeToLabel={labels.arrTime}
           emptyLabel={labels.empty}
+          periodLabel={labels.period}
         />
       </div>
     </section>

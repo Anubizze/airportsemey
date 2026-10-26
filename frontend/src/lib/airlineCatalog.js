@@ -1,6 +1,7 @@
 import flyarystanLogo from '@/public/flyarystan.png';
 import scatLogo from '@/public/scat.png';
 import hiSkyLogo from '@/public/hisky.png';
+import vietjetQazaqstanLogo from '@/public/Vietjet Qazaqstan.jpeg';
 
 import { resolveUploadUrl } from '@/lib/servicesApi';
 
@@ -30,6 +31,15 @@ export const BUILTIN_AIRLINES = [
     logo: hiSkyLogo,
     descriptionKey: 'hisky',
     sortOrder: 3,
+    aliases: [],
+  },
+  {
+    code: 'IQ',
+    name: 'Vietjet Qazaqstan',
+    websiteUrl: '',
+    logo: vietjetQazaqstanLogo,
+    descriptionKey: '',
+    sortOrder: 4,
     aliases: [],
   },
 ];

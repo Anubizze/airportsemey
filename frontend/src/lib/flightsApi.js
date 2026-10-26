@@ -1,4 +1,4 @@
-import { ARRIVALS, DEPARTURES } from '@/data/flights';
+import { getScheduledFlights } from '@/data/flights';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ??
@@ -8,10 +8,9 @@ function toLocalDateString(value) {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Almaty', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const get = (type) => parts.find((part) => part.type === type)?.value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
 function formatTime(value) {
@@ -22,6 +21,7 @@ function formatTime(value) {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
+    timeZone: 'Asia/Almaty',
   });
 }
 
@@ -68,7 +68,7 @@ function sanitizeFlightList(list) {
   const byFlightNumber = new Map();
 
   for (const item of list) {
-    const key = String(item.flightNumber ?? '').trim().toUpperCase();
+    const key = `${String(item.flightNumber ?? '').trim().toUpperCase()}|${item.date ?? ''}|${item.scheduled ?? ''}`;
     const normalized = {
       ...item,
       destination: item.destination ? normalizeCityName(item.destination) : item.destination,
@@ -150,9 +150,10 @@ export async function fetchFlights() {
 }
 
 export function getFallbackFlights() {
+  const data = getScheduledFlights();
   return {
-    arrivals: sanitizeFlightList(ARRIVALS),
-    departures: sanitizeFlightList(DEPARTURES),
+    arrivals: sanitizeFlightList(data.arrivals),
+    departures: sanitizeFlightList(data.departures),
   };
 }
 

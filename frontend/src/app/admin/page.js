@@ -178,6 +178,9 @@ export default function AdminPage() {
   const [schedulePhotoFile, setSchedulePhotoFile] = useState(null);
   const [scheduleSource, setScheduleSource] = useState('default');
   const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleWarnings, setScheduleWarnings] = useState([]);
+  const [scheduleNeedsReview, setScheduleNeedsReview] = useState(false);
+  const schedulePhotoInputRef = useRef(null);
   const [carrierName, setCarrierName] = useState('');
   const [carrierCode, setCarrierCode] = useState('');
   const [carrierSite, setCarrierSite] = useState('');
@@ -300,7 +303,10 @@ export default function AdminPage() {
       handleSessionExpired();
       return;
     }
-    if (!response.ok) return;
+    if (!response.ok) {
+      setMessage(data?.message || 'Не удалось загрузить расписание');
+      return;
+    }
     const entries = Array.isArray(data.entries) ? data.entries : [];
     setScheduleEntries(
       entries.map((entry, index) => ({
@@ -310,6 +316,9 @@ export default function AdminPage() {
         direction: entry.direction === 'arrival' ? 'arrival' : 'departure',
         city: entry.city ?? '',
         time: entry.time ?? '',
+        counterpartTime: entry.counterpartTime ?? '',
+        validFrom: entry.validFrom ?? '',
+        validTo: entry.validTo ?? '',
       })),
     );
     setSchedulePhotoUrl(data.photoUrl || '');
@@ -333,12 +342,16 @@ export default function AdminPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          photoUrl: schedulePhotoUrl,
           entries: scheduleEntries.map((entry) => ({
             weekday: Number(entry.weekday),
             flightNumber: entry.flightNumber,
             direction: entry.direction,
             city: entry.city,
             time: entry.time,
+            counterpartTime: entry.counterpartTime,
+            validFrom: entry.validFrom,
+            validTo: entry.validTo,
           })),
         }),
       });
@@ -356,6 +369,8 @@ export default function AdminPage() {
         `Расписание сохранено. На сегодня применено рейсов: ${data.applied ?? 0}. AviationStack обновит статусы по этим рейсам.`,
       );
       setScheduleSource('custom');
+      setScheduleWarnings([]);
+      setScheduleNeedsReview(false);
       await loadFlights();
       await loadSchedule(token);
     } catch (error) {
@@ -368,6 +383,10 @@ export default function AdminPage() {
   const handleSchedulePhotoUpload = async (event) => {
     event.preventDefault();
     if (!schedulePhotoFile) return;
+    if (schedulePhotoFile.size > 8 * 1024 * 1024) {
+      setMessage('Фото должно быть не больше 8 МБ');
+      return;
+    }
     setScheduleLoading(true);
     setMessage('');
     try {
@@ -384,11 +403,22 @@ export default function AdminPage() {
         return;
       }
       if (!response.ok) {
-        throw new Error(data?.message || 'Не удалось загрузить фото');
+        throw new Error(Array.isArray(data?.message) ? data.message.join(', ') : data?.message || 'Не удалось распознать фото');
       }
+      if (!Array.isArray(data.entries) || !data.entries.length) throw new Error('Сервер не вернул распознанные рейсы. Проверьте обновление бэкенда.');
+      setScheduleEntries(data.entries.map((entry, index) => ({
+        ...entry,
+        counterpartTime: entry.counterpartTime ?? '',
+        validFrom: entry.validFrom ?? '',
+        validTo: entry.validTo ?? '',
+        localKey: `photo-${index}`,
+      })));
+      setScheduleWarnings(Array.isArray(data.warnings) ? data.warnings : []);
+      setScheduleNeedsReview(true);
       setSchedulePhotoUrl(data.photoUrl || '');
       setSchedulePhotoFile(null);
-      setMessage('Фото расписания загружено. Сверьте рейсы в таблице и сохраните.');
+      if (schedulePhotoInputRef.current) schedulePhotoInputRef.current.value = '';
+      setMessage(`Распознано рейсов: ${data.entries.length}. Сверьте таблицу с фото и нажмите «Сохранить расписание».`);
     } catch (error) {
       setMessage(error.message || 'Не удалось загрузить фото');
     } finally {
@@ -1188,7 +1218,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Расписание на неделю</h2>
           <p className="text-sm text-gray-500 mb-4">
-            Загрузите фото нового расписания, поправьте рейсы и время в таблице и сохраните.
+            Загрузите фото: рейсы, время и периоды заполнятся автоматически. Проверьте таблицу и сохраните.
             Сегодняшние рейсы сразу попадут на табло, а AviationStack подхватит их статусы.
             {scheduleSource === 'default'
               ? ' Сейчас показано встроенное расписание — сохраните его, чтобы закрепить.'
@@ -1210,9 +1240,11 @@ export default function AdminPage() {
                 )}
               </div>
               <input
+                ref={schedulePhotoInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
                 className="w-full text-sm"
+                disabled={scheduleLoading}
                 onChange={(e) => setSchedulePhotoFile(e.target.files?.[0] ?? null)}
               />
               <button
@@ -1220,133 +1252,160 @@ export default function AdminPage() {
                 disabled={scheduleLoading || !schedulePhotoFile}
                 className="w-full rounded-xl bg-blue-900 text-white text-sm font-semibold px-4 py-2.5 hover:opacity-90 disabled:opacity-50"
               >
-                Загрузить фото
+                {scheduleLoading ? 'Обработка…' : 'Распознать фото'}
               </button>
+              <p className="text-xs text-gray-500">JPEG, PNG, WebP или GIF, до 8 МБ. Сфотографируйте всю таблицу прямо и при хорошем освещении.</p>
             </form>
             <div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-500">
-                      <th className="py-2 pr-2">День</th>
-                      <th className="py-2 pr-2">Рейс</th>
-                      <th className="py-2 pr-2">Тип</th>
-                      <th className="py-2 pr-2">Город</th>
-                      <th className="py-2 pr-2">Время</th>
-                      <th className="py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scheduleEntries.map((entry) => (
-                      <tr key={entry.localKey} className="border-t border-gray-100">
-                        <td className="py-1.5 pr-2">
-                          <select
-                            className="rounded-lg border border-gray-200 px-2 py-1.5"
-                            value={entry.weekday}
-                            onChange={(e) =>
-                              updateScheduleEntry(entry.localKey, { weekday: Number(e.target.value) })
-                            }
-                          >
-                            {WEEKDAY_OPTIONS.map((day) => (
-                              <option key={day.value} value={day.value}>
-                                {day.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-1.5 pr-2">
-                          <input
-                            className="w-24 rounded-lg border border-gray-200 px-2 py-1.5 uppercase"
-                            value={entry.flightNumber}
-                            onChange={(e) =>
-                              updateScheduleEntry(entry.localKey, {
-                                flightNumber: e.target.value.toUpperCase(),
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="py-1.5 pr-2">
-                          <select
-                            className="rounded-lg border border-gray-200 px-2 py-1.5"
-                            value={entry.direction}
-                            onChange={(e) =>
-                              updateScheduleEntry(entry.localKey, { direction: e.target.value })
-                            }
-                          >
-                            <option value="departure">Вылет</option>
-                            <option value="arrival">Прилёт</option>
-                          </select>
-                        </td>
-                        <td className="py-1.5 pr-2">
-                          <input
-                            className="w-32 rounded-lg border border-gray-200 px-2 py-1.5"
-                            value={entry.city}
-                            onChange={(e) => updateScheduleEntry(entry.localKey, { city: e.target.value })}
-                          />
-                        </td>
-                        <td className="py-1.5 pr-2">
-                          <input
-                            type="time"
-                            className="rounded-lg border border-gray-200 px-2 py-1.5"
-                            value={entry.time}
-                            onChange={(e) => updateScheduleEntry(entry.localKey, { time: e.target.value })}
-                          />
-                        </td>
-                        <td className="py-1.5">
-                          <button
-                            type="button"
-                            className="text-red-600 hover:underline"
-                            onClick={() =>
-                              setScheduleEntries((rows) =>
-                                rows.filter((row) => row.localKey !== entry.localKey),
-                              )
-                            }
-                          >
-                            Удалить
-                          </button>
-                        </td>
+              {scheduleWarnings.length > 0 && (
+                <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="font-semibold">Проверьте распознавание</p>
+                  <ul className="mt-2 list-disc pl-5">{scheduleWarnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>
+                </div>
+              )}
+              <fieldset disabled={scheduleLoading}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-500">
+                        <th className="py-2 pr-2">День</th>
+                        <th className="py-2 pr-2">Рейс</th>
+                        <th className="py-2 pr-2">Тип</th>
+                        <th className="py-2 pr-2">Город</th>
+                        <th className="py-2 pr-2">Время в Семее</th>
+                        <th className="py-2 pr-2">Время в другом городе</th>
+                        <th className="py-2 pr-2">Период с</th>
+                        <th className="py-2 pr-2">Период по</th>
+                        <th className="py-2" />
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-                  onClick={() =>
-                    setScheduleEntries((rows) => [
-                      ...rows,
-                      {
-                        localKey: `new-${Date.now()}`,
-                        weekday: 1,
-                        flightNumber: '',
-                        direction: 'departure',
-                        city: '',
-                        time: '12:00',
-                      },
-                    ])
-                  }
-                >
-                  Добавить рейс
-                </button>
-                <button
-                  type="button"
-                  disabled={scheduleLoading}
-                  onClick={() => void handleSaveSchedule()}
-                  className="rounded-xl bg-blue-900 text-white text-sm font-semibold px-4 py-2 hover:opacity-90 disabled:opacity-50"
-                >
-                  Сохранить расписание
-                </button>
-                <button
-                  type="button"
-                  disabled={scheduleLoading}
-                  onClick={() => void handleSyncAviation()}
-                  className="rounded-xl border border-blue-900 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50 disabled:opacity-50"
-                >
-                  Обновить статусы AviationStack
-                </button>
-              </div>
+                    </thead>
+                    <tbody>
+                      {scheduleEntries.map((entry) => (
+                        <tr key={entry.localKey} className="border-t border-gray-100">
+                          <td className="py-1.5 pr-2">
+                            <select
+                              className="rounded-lg border border-gray-200 px-2 py-1.5"
+                              value={entry.weekday}
+                              onChange={(e) =>
+                                updateScheduleEntry(entry.localKey, { weekday: Number(e.target.value) })
+                              }
+                            >
+                              {WEEKDAY_OPTIONS.map((day) => (
+                                <option key={day.value} value={day.value}>
+                                  {day.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="py-1.5 pr-2">
+                            <input
+                              className="w-24 rounded-lg border border-gray-200 px-2 py-1.5 uppercase"
+                              value={entry.flightNumber}
+                              onChange={(e) =>
+                                updateScheduleEntry(entry.localKey, {
+                                  flightNumber: e.target.value.toUpperCase(),
+                                })
+                              }
+                            />
+                          </td>
+                          <td className="py-1.5 pr-2">
+                            <select
+                              className="rounded-lg border border-gray-200 px-2 py-1.5"
+                              value={entry.direction}
+                              onChange={(e) =>
+                                updateScheduleEntry(entry.localKey, { direction: e.target.value })
+                              }
+                            >
+                              <option value="departure">Вылет</option>
+                              <option value="arrival">Прилёт</option>
+                            </select>
+                          </td>
+                          <td className="py-1.5 pr-2">
+                            <input
+                              className="w-32 rounded-lg border border-gray-200 px-2 py-1.5"
+                              value={entry.city}
+                              onChange={(e) => updateScheduleEntry(entry.localKey, { city: e.target.value })}
+                            />
+                          </td>
+                          <td className="py-1.5 pr-2">
+                            <input
+                              type="time"
+                              className="rounded-lg border border-gray-200 px-2 py-1.5"
+                              value={entry.time}
+                              onChange={(e) => updateScheduleEntry(entry.localKey, { time: e.target.value })}
+                            />
+                          </td>
+                          <td className="py-1.5 pr-2">
+                            <input type="time" aria-label="Время в другом городе" className="rounded-lg border border-gray-200 px-2 py-1.5" value={entry.counterpartTime} onChange={(e) => updateScheduleEntry(entry.localKey, { counterpartTime: e.target.value })} />
+                          </td>
+                          <td className="py-1.5 pr-2">
+                            <input type="date" aria-label="Начало периода" className="rounded-lg border border-gray-200 px-2 py-1.5" value={entry.validFrom} onChange={(e) => updateScheduleEntry(entry.localKey, { validFrom: e.target.value })} />
+                          </td>
+                          <td className="py-1.5 pr-2">
+                            <input type="date" aria-label="Конец периода" className="rounded-lg border border-gray-200 px-2 py-1.5" value={entry.validTo} onChange={(e) => updateScheduleEntry(entry.localKey, { validTo: e.target.value })} />
+                          </td>
+                          <td className="py-1.5">
+                            <button
+                              type="button"
+                              className="text-red-600 hover:underline"
+                              onClick={() =>
+                                setScheduleEntries((rows) =>
+                                  rows.filter((row) => row.localKey !== entry.localKey),
+                                )
+                              }
+                            >
+                              Удалить
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {scheduleNeedsReview && (
+                  <p className="mt-4 text-sm text-blue-800">Фото распознано. Сверьте все дни недели, номера, время и периоды. Изменения появятся на сайте после сохранения.</p>
+                )}
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                    onClick={() =>
+                      setScheduleEntries((rows) => [
+                        ...rows,
+                        {
+                          localKey: `new-${Date.now()}`,
+                          weekday: 1,
+                          flightNumber: '',
+                          direction: 'departure',
+                          city: '',
+                          time: '12:00',
+                          counterpartTime: '',
+                          validFrom: '',
+                          validTo: '',
+                        },
+                      ])
+                    }
+                  >
+                    Добавить рейс
+                  </button>
+                  <button
+                    type="button"
+                    disabled={scheduleLoading}
+                    onClick={() => void handleSaveSchedule()}
+                    className="rounded-xl bg-blue-900 text-white text-sm font-semibold px-4 py-2 hover:opacity-90 disabled:opacity-50"
+                  >
+                    Сохранить расписание
+                  </button>
+                  <button
+                    type="button"
+                    disabled={scheduleLoading}
+                    onClick={() => void handleSyncAviation()}
+                    className="rounded-xl border border-blue-900 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50 disabled:opacity-50"
+                  >
+                    Обновить статусы AviationStack
+                  </button>
+                </div>
+              </fieldset>
             </div>
           </div>
         </div>
