@@ -25,6 +25,7 @@ import {
 } from '@/lib/documentsApi';
 import FuelStorageAdminSection from '@/components/admin/FuelStorageAdminSection';
 import ServicePricesAdminSection from '@/components/admin/ServicePricesAdminSection';
+import AnnouncementsAdminSection from '@/components/admin/AnnouncementsAdminSection';
 import { AIRPORT_SERVICES } from '@/data/services';
 import { normalizeScheduleBoard } from '@/lib/scheduleApi';
 
@@ -1102,6 +1103,7 @@ export default function AdminPage() {
             ['services', 'Фото услуг'],
             ['jobs', 'Вакансии'],
             ['docs', 'Документы'],
+            ['announcements', 'Объявления'],
             ['fuel', 'ГСМ'],
             ['log', 'Журнал'],
           ].map(([id, label]) => (
@@ -1122,6 +1124,10 @@ export default function AdminPage() {
 
         {adminTab === 'prices' && (
           <ServicePricesAdminSection token={token} onMessage={setMessage} onAuthError={handleAuthError} />
+        )}
+
+        {adminTab === 'announcements' && (
+          <AnnouncementsAdminSection token={token} onAuthError={handleAuthError} />
         )}
 
         {adminTab === 'airlines' && (

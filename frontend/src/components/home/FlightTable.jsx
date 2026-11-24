@@ -43,7 +43,7 @@ export default function FlightTable() {
     <section className="py-14 bg-gray-50">
       <div className="container mx-auto px-4 lg:px-8">
         {/* Section header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-5">
           <div>
             <div className="flex flex-wrap items-center gap-3 mb-2">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">{t.flights.title}</h2>
@@ -60,6 +60,27 @@ export default function FlightTable() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </Link>
+        </div>
+
+        <div
+          role="alert"
+          className="mb-8 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-red-900"
+        >
+          <svg className="mt-0.5 h-5 w-5 shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold">
+              {lang === 'kk' ? 'Маңызды хабарлама' : lang === 'en' ? 'Important notice' : 'Важное уведомление'}
+            </p>
+            <p className="mt-0.5 text-sm">
+              {lang === 'kk'
+                ? 'IQ373 және IQ374 рейстері техникалық себептерге байланысты тоқтатылды.'
+                : lang === 'en'
+                  ? 'Flights IQ373 and IQ374 have been cancelled due to technical reasons.'
+                  : 'Рейсы IQ373 и IQ374 отменены по техническим причинам.'}
+            </p>
+          </div>
         </div>
 
         {/* Tabs */}

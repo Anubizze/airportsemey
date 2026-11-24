@@ -44,6 +44,7 @@ export default function Footer() {
         { label: t.nav.tariffs, href: '/partners/tariffs' },
         { label: t.nav.fuel, href: '/partners/fuel-storage' },
         { label: t.nav.documents, href: '/partners/documents' },
+        { label: t.nav.announcements, href: '/partners/announcements' },
       ],
     },
     {
