@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { deleteAnnouncement, fetchAdminAnnouncements, saveAnnouncement } from '@/lib/announcementsApi';
 
 const EMPTY_FORM = {
-  titleRu: '', contentRu: '', titleKz: '', contentKz: '', titleEn: '', contentEn: '', isPublished: true,
+  titleRu: '', contentRu: '', titleKz: '', contentKz: '', titleEn: '', contentEn: '', isPublished: true, isImportant: false,
 };
 const inputClass = 'mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm';
 
@@ -82,7 +82,7 @@ export default function AnnouncementsAdminSection({ token, onAuthError }) {
     <section className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Объявления</h2>
-        <p className="text-sm text-gray-500">Публикации для раздела «Партнёрам → Объявления».</p>
+        <p className="text-sm text-gray-500">Публикации для раздела «Партнёрам → Объявления» и важные уведомления над таблицей рейсов.</p>
       </div>
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {message && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">{message}</p>}
@@ -119,6 +119,13 @@ export default function AnnouncementsAdminSection({ token, onAuthError }) {
             <input type="checkbox" checked={form.isPublished} onChange={(event) => updateField('isPublished', event.target.checked)} />
             Опубликовать на сайте
           </label>
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={form.isImportant} onChange={(event) => updateField('isImportant', event.target.checked)} className="mt-0.5" />
+            <span>
+              Показывать как важное уведомление над таблицей рейсов
+              <span className="mt-0.5 block text-xs text-gray-500">На сайте показываются только опубликованные уведомления.</span>
+            </span>
+          </label>
           <div className="flex flex-wrap gap-3">
             <button type="submit" className="rounded-xl bg-blue-900 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Сохранение...' : 'Сохранить объявление'}</button>
             {editingId && <button type="button" onClick={reset} className="rounded-xl border border-gray-300 px-4 py-2 text-sm">Отменить редактирование</button>}
@@ -133,6 +140,7 @@ export default function AnnouncementsAdminSection({ token, onAuthError }) {
             <article key={item.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="mb-2 flex flex-wrap items-center gap-3">
                 <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${item.isPublished ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{item.isPublished ? 'Опубликовано' : 'Черновик'}</span>
+                {item.isImportant && <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">Важное уведомление</span>}
                 <span className="text-xs text-gray-500">{new Date(item.createdAt).toLocaleDateString('ru-RU', { timeZone: 'Asia/Almaty' })}</span>
               </div>
               <h3 className="break-words font-semibold text-gray-900">{item.titleRu}</h3>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import FlightStatusBadge from '@/components/ui/FlightStatusBadge';
 import LiveStatusBadge from '@/components/ui/LiveStatusBadge';
@@ -8,6 +8,7 @@ import AirlineLogo from '@/components/ui/AirlineLogo';
 import { useLanguage } from '@/context/LanguageContext';
 import { useLiveFlights } from '@/hooks/useLiveFlights';
 import { getLocale, translateCity } from '@/lib/locale';
+import { fetchAnnouncements, getAnnouncementText } from '@/lib/announcementsApi';
 
 function ActualTime({ actual, scheduled }) {
   if (!actual || actual === '00:00') {
@@ -24,9 +25,26 @@ function ActualTime({ actual, scheduled }) {
 
 export default function FlightTable() {
   const [tab, setTab] = useState('arrivals');
+  const [importantAnnouncements, setImportantAnnouncements] = useState([]);
   const { flightsData, liveStatus, apiOnline } = useLiveFlights();
   const { t, lang } = useLanguage();
   const flights = tab === 'departures' ? flightsData.departures : flightsData.arrivals;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadImportantAnnouncements = () => {
+      fetchAnnouncements().then((items) => {
+        if (!cancelled && Array.isArray(items)) {
+          setImportantAnnouncements(items.filter((item) => item.isImportant));
+        }
+      }).catch(() => {
+        if (!cancelled) setImportantAnnouncements([]);
+      });
+    };
+    loadImportantAnnouncements();
+    const interval = window.setInterval(loadImportantAnnouncements, 30000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, []);
 
   const today = new Date().toLocaleDateString(getLocale(lang), {
     day: 'numeric',
@@ -62,26 +80,24 @@ export default function FlightTable() {
           </Link>
         </div>
 
-        <div
-          role="alert"
-          className="mb-8 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-red-900"
-        >
-          <svg className="mt-0.5 h-5 w-5 shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
-          </svg>
-          <div>
-            <p className="text-sm font-semibold">
-              {lang === 'kk' ? 'Маңызды хабарлама' : lang === 'en' ? 'Important notice' : 'Важное уведомление'}
-            </p>
-            <p className="mt-0.5 text-sm">
-              {lang === 'kk'
-                ? 'IQ373 және IQ374 рейстері техникалық себептерге байланысты тоқтатылды.'
-                : lang === 'en'
-                  ? 'Flights IQ373 and IQ374 have been cancelled due to technical reasons.'
-                  : 'Рейсы IQ373 и IQ374 отменены по техническим причинам.'}
-            </p>
-          </div>
-        </div>
+        {importantAnnouncements.map((announcement) => {
+          const { title, content } = getAnnouncementText(announcement, lang);
+          return (
+            <div
+              key={announcement.id}
+              role="alert"
+              className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 text-red-900 last:mb-8"
+            >
+              <svg className="mt-0.5 h-5 w-5 shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 1 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+              </svg>
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold">{title}</p>
+                <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{content}</p>
+              </div>
+            </div>
+          );
+        })}
 
         {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-6 w-fit">
